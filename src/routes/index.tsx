@@ -1,26 +1,181 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Search, Tag, Sparkles, TrendingDown, Flame } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DealCard } from "@/components/DealCard";
+import { PriceAlertModal } from "@/components/PriceAlertModal";
+import { fetchDeals, calcDiscount, type Deal } from "@/lib/deals";
 
 export const Route = createFileRoute("/")({
   component: Index,
+  head: () => ({
+    meta: [
+      { title: "CheckThePrice — Hottest Online Deals & Loot Alerts" },
+      {
+        name: "description",
+        content:
+          "Discover hand-picked online deals with visual Loot Meter scoring, local-shop price comparison, and instant price drop alerts.",
+      },
+    ],
+  }),
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
+function Index() {
+  const { data: deals, isLoading, error } = useQuery({
+    queryKey: ["deals"],
+    queryFn: fetchDeals,
+    refetchOnWindowFocus: false,
+  });
+
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<string>("All");
+  const [filter, setFilter] = useState<"all" | "hot">("all");
+  const [alertDeal, setAlertDeal] = useState<Deal | null>(null);
+
+  const categories = useMemo(() => {
+    const set = new Set<string>(["All"]);
+    deals?.forEach((d) => set.add(d.category));
+    return Array.from(set);
+  }, [deals]);
+
+  const filtered = useMemo(() => {
+    if (!deals) return [];
+    return deals.filter((d) => {
+      const matchSearch = d.title
+        .toLowerCase()
+        .includes(search.toLowerCase());
+      const matchCat = category === "All" || d.category === category;
+      const matchHot =
+        filter === "all" || calcDiscount(d.mrp, d.onlinePrice) > 65;
+      return matchSearch && matchCat && matchHot;
+    });
+  }, [deals, search, category, filter]);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
+    <div className="min-h-screen bg-background">
+      {/* Hero */}
+      <header className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 -z-10 opacity-95"
+          style={{ background: "var(--gradient-hero)" }}
+        />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.25),transparent_50%)]" />
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 text-primary-foreground">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+              <Tag className="h-5 w-5" />
+            </div>
+            <span className="text-lg font-bold tracking-tight">
+              CheckThePrice
+            </span>
+          </div>
+          <div className="hidden items-center gap-2 text-sm font-medium sm:flex">
+            <Sparkles className="h-4 w-4" />
+            <span>Updated daily</span>
+          </div>
+        </nav>
+
+        <div className="mx-auto max-w-4xl px-6 pb-20 pt-10 text-center text-primary-foreground sm:pb-28 sm:pt-16">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-xs font-medium backdrop-blur">
+            <Flame className="h-3.5 w-3.5" /> Today's hand-picked loot
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
+            Never overpay online again.
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-base text-white/85 sm:text-lg">
+            Real discounts, scored by our Loot Meter, compared against your
+            local shop price — so you always know it's a steal.
+          </p>
+
+          <div className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-full bg-white p-1.5 shadow-2xl">
+            <Search className="ml-3 h-5 w-5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search deals..."
+              className="border-0 bg-transparent text-foreground shadow-none focus-visible:ring-0"
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* Filters */}
+      <section className="sticky top-0 z-10 border-b bg-background/85 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 overflow-x-auto px-6 py-3">
+          <Button
+            variant={filter === "hot" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilter(filter === "hot" ? "all" : "hot")}
+            className="shrink-0"
+          >
+            <Flame className="mr-1 h-4 w-4" /> Hot Loot
+          </Button>
+          <div className="h-6 w-px bg-border" />
+          {categories.map((c) => (
+            <Button
+              key={c}
+              variant={category === c ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setCategory(c)}
+              className="shrink-0"
+            >
+              {c}
+            </Button>
+          ))}
+        </div>
+      </section>
+
+      {/* Grid */}
+      <main className="mx-auto max-w-7xl px-6 py-10">
+        {isLoading && (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-[480px] rounded-2xl" />
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+            <p className="font-semibold text-destructive">
+              Couldn't load deals from the Google Sheet.
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Make sure your sheet is shared as "Anyone with the link" and the
+              ID in <code>src/lib/deals.ts</code> is correct.
+            </p>
+          </div>
+        )}
+
+        {!isLoading && !error && filtered.length === 0 && (
+          <div className="py-20 text-center text-muted-foreground">
+            <TrendingDown className="mx-auto mb-3 h-10 w-10 opacity-40" />
+            No deals match your filters.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map((d) => (
+            <DealCard key={d.id} deal={d} onAlert={setAlertDeal} />
+          ))}
+        </div>
+      </main>
+
+      <footer className="border-t py-8 text-center text-sm text-muted-foreground">
+        <p>
+          © {new Date().getFullYear()} CheckThePrice — Powered by your Google
+          Sheet
+        </p>
+      </footer>
+
+      <PriceAlertModal
+        deal={alertDeal}
+        open={!!alertDeal}
+        onOpenChange={(o) => !o && setAlertDeal(null)}
       />
     </div>
   );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
 }
