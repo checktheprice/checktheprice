@@ -68,6 +68,7 @@
   --color-category-fashion: var(--category-fashion);
   --color-category-all: var(--category-all);
   --color-category-active-text: var(--category-active-text);
+  --color-neon-orange: var(--neon-orange);
 }
 
 :root {
