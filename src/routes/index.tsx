@@ -78,16 +78,21 @@ function Index() {
           </div>
         </nav>
 
-        <div className="mx-auto max-w-4xl px-6 pb-20 pt-10 text-center text-primary-foreground sm:pb-28 sm:pt-16">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-xs font-medium backdrop-blur">
-            <Flame className="h-3.5 w-3.5" /> Today's hand-picked loot
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
-            Never overpay online again.
+        <div className="mx-auto max-w-4xl px-6 pb-20 pt-10 text-center sm:pb-28 sm:pt-16">
+          <h1
+            className="text-5xl font-extrabold tracking-tight sm:text-7xl text-neon-orange"
+            style={{
+              textShadow:
+                "0 0 24px color-mix(in oklab, var(--neon-orange) 55%, transparent), 0 0 60px color-mix(in oklab, var(--neon-orange) 25%, transparent)",
+            }}
+          >
+            CheckThePrice
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-white/85 sm:text-lg">
-            Real discounts, scored by our Loot Meter, compared against your
-            local shop price — so you always know it's a steal.
+          <p className="mx-auto mt-4 max-w-2xl text-base font-medium text-white sm:text-lg">
+            🔥 Hottest Online Deals vs Offline Market Prices
+          </p>
+          <p className="mx-auto mt-1.5 max-w-2xl text-xs italic text-muted-foreground sm:text-sm">
+            Loot meters are calculated automatically. Real-time updates via Google Sheets.
           </p>
 
           <div className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-full bg-white p-1.5 shadow-2xl">
