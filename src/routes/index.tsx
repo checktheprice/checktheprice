@@ -57,45 +57,41 @@ function Index() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <header className="relative overflow-hidden">
+      <header className="relative overflow-hidden border-b">
         <div
-          className="absolute inset-0 -z-10 opacity-95"
+          className="absolute inset-0 -z-10"
           style={{ background: "var(--gradient-hero)" }}
         />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.25),transparent_50%)]" />
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 text-primary-foreground">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 text-foreground">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
               <Tag className="h-5 w-5" />
             </div>
             <span className="text-lg font-bold tracking-tight">
               CheckThePrice
             </span>
           </div>
-          <div className="hidden items-center gap-2 text-sm font-medium sm:flex">
+          <div className="hidden items-center gap-2 text-sm font-medium text-muted-foreground sm:flex">
             <Sparkles className="h-4 w-4" />
             <span>Updated daily</span>
           </div>
         </nav>
 
-        <div className="mx-auto max-w-4xl px-6 pb-20 pt-10 text-center sm:pb-28 sm:pt-16">
+        <div className="mx-auto max-w-4xl px-6 pb-16 pt-8 text-center sm:pb-20 sm:pt-12">
           <h1
-            className="text-5xl font-extrabold tracking-tight sm:text-7xl text-neon-orange"
-            style={{
-              textShadow:
-                "0 0 24px color-mix(in oklab, var(--neon-orange) 55%, transparent), 0 0 60px color-mix(in oklab, var(--neon-orange) 25%, transparent)",
-            }}
+            className="text-5xl font-extrabold tracking-tight sm:text-7xl"
+            style={{ color: "#ff9900" }}
           >
             CheckThePrice
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base font-medium text-white sm:text-lg">
+          <p className="mx-auto mt-4 max-w-2xl text-base font-semibold text-foreground sm:text-lg">
             🔥 Hottest Online Deals vs Offline Market Prices
           </p>
           <p className="mx-auto mt-1.5 max-w-2xl text-xs italic text-muted-foreground sm:text-sm">
             Loot meters are calculated automatically. Real-time updates via Google Sheets.
           </p>
 
-          <div className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-full bg-white p-1.5 shadow-2xl">
+          <div className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-full bg-card p-1.5 shadow-lg border">
             <Search className="ml-3 h-5 w-5 text-muted-foreground" />
             <Input
               value={search}
