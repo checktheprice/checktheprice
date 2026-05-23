@@ -73,33 +73,33 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.99 0.005 270);
-  --foreground: oklch(0.18 0.03 270);
+  --background: oklch(0.98 0.003 240); /* #f7f9fa */
+  --foreground: oklch(0.22 0.02 270);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.03 270);
+  --card-foreground: oklch(0.22 0.02 270);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.03 270);
-  --primary: oklch(0.55 0.22 285);
-  --primary-foreground: oklch(0.99 0 0);
-  --primary-glow: oklch(0.7 0.2 310);
-  --secondary: oklch(0.96 0.01 270);
-  --secondary-foreground: oklch(0.2 0.03 270);
-  --muted: oklch(0.96 0.01 270);
-  --muted-foreground: oklch(0.5 0.02 270);
-  --accent: oklch(0.95 0.04 310);
-  --accent-foreground: oklch(0.25 0.1 300);
+  --popover-foreground: oklch(0.22 0.02 270);
+  --primary: oklch(0.75 0.19 60); /* #ff9900 orange */
+  --primary-foreground: oklch(1 0 0);
+  --primary-glow: oklch(0.82 0.17 70);
+  --secondary: oklch(0.96 0.005 240);
+  --secondary-foreground: oklch(0.22 0.02 270);
+  --muted: oklch(0.95 0.005 240);
+  --muted-foreground: oklch(0.5 0.015 270);
+  --accent: oklch(0.96 0.04 65);
+  --accent-foreground: oklch(0.35 0.12 60);
   --destructive: oklch(0.6 0.24 25);
   --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.92 0.01 270);
-  --input: oklch(0.92 0.01 270);
-  --ring: oklch(0.55 0.22 285);
+  --border: oklch(0.92 0.005 240);
+  --input: oklch(0.92 0.005 240);
+  --ring: oklch(0.75 0.19 60);
   --loot-hot: oklch(0.7 0.2 145);
   --loot-mid: oklch(0.8 0.17 85);
   --loot-low: oklch(0.65 0.22 25);
-  --gradient-hero: linear-gradient(135deg, oklch(0.55 0.22 285), oklch(0.7 0.2 310));
-  --gradient-card: linear-gradient(180deg, oklch(1 0 0), oklch(0.98 0.01 285));
-  --shadow-card: 0 4px 24px -8px oklch(0.55 0.22 285 / 0.15);
-  --shadow-hover: 0 12px 40px -8px oklch(0.55 0.22 285 / 0.3);
+  --gradient-hero: linear-gradient(180deg, oklch(0.99 0.005 240), oklch(0.96 0.01 65));
+  --gradient-card: linear-gradient(180deg, oklch(1 0 0), oklch(0.99 0.003 240));
+  --shadow-card: 0 2px 12px -2px oklch(0.2 0.02 270 / 0.08), 0 4px 24px -8px oklch(0.2 0.02 270 / 0.06);
+  --shadow-hover: 0 12px 40px -8px oklch(0.75 0.19 60 / 0.25);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
