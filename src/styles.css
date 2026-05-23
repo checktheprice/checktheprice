@@ -118,6 +118,7 @@
   --category-fashion: oklch(0.6 0.22 300);
   --category-all: oklch(0.3 0.03 270);
   --category-active-text: oklch(0.99 0 0);
+  --neon-orange: oklch(0.72 0.24 50);
 }
 
 .dark {
