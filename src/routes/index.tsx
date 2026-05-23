@@ -106,25 +106,49 @@ function Index() {
       <section className="sticky top-0 z-10 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center gap-3 overflow-x-auto px-6 py-3">
           <Button
-            variant={filter === "hot" ? "default" : "outline"}
             size="sm"
             onClick={() => setFilter(filter === "hot" ? "all" : "hot")}
-            className="shrink-0"
+            className={`shrink-0 transition-all duration-200 ${
+              filter === "hot"
+                ? "bg-loot-hot hover:bg-loot-hot text-category-active-text font-bold shadow-md scale-105"
+                : "bg-muted/50 border border-border/80 text-foreground hover:bg-muted hover:border-border font-medium shadow-sm"
+            }`}
           >
             <Flame className="mr-1 h-4 w-4" /> Hot Loot
           </Button>
           <div className="h-6 w-px bg-border" />
-          {categories.map((c) => (
-            <Button
-              key={c}
-              variant={category === c ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setCategory(c)}
-              className="shrink-0"
-            >
-              {c}
-            </Button>
-          ))}
+          {categories.map((c) => {
+            const isActive = category === c;
+            let activeClass =
+              "bg-primary hover:bg-primary text-primary-foreground";
+            if (c === "Electronics")
+              activeClass =
+                "bg-category-electronics hover:bg-category-electronics text-category-active-text";
+            else if (c === "Wearables")
+              activeClass =
+                "bg-category-wearables hover:bg-category-wearables text-category-active-text";
+            else if (c === "Fashion")
+              activeClass =
+                "bg-category-fashion hover:bg-category-fashion text-category-active-text";
+            else if (c === "All")
+              activeClass =
+                "bg-category-all hover:bg-category-all text-category-active-text";
+
+            return (
+              <Button
+                key={c}
+                size="sm"
+                onClick={() => setCategory(c)}
+                className={`shrink-0 transition-all duration-200 ${
+                  isActive
+                    ? `${activeClass} font-bold shadow-md scale-105`
+                    : "bg-muted/50 border border-border/80 text-foreground hover:bg-muted hover:border-border font-medium shadow-sm"
+                }`}
+              >
+                {c}
+              </Button>
+            );
+          })}
         </div>
       </section>
 
