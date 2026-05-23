@@ -72,14 +72,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Checktheprice" },
+      { name: "description", content: "Price Drop Finder displays online offers with visual savings indicators and price alerts." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Checktheprice" },
+      { property: "og:description", content: "Price Drop Finder displays online offers with visual savings indicators and price alerts." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Checktheprice" },
+      { name: "twitter:description", content: "Price Drop Finder displays online offers with visual savings indicators and price alerts." },
     ],
     links: [
       {
