@@ -58,7 +58,7 @@ const html = `<!DOCTYPE html>
   <link rel="icon" href="${base}favicon.ico">
 ${cssLinks}
 </head>
-<body style="margin: 1px;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <div id="__loading__" style="min-height:100vh;background:#f7f9fa;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
     <div style="font-size:36px;font-weight:800;color:#ff9900;letter-spacing:-0.02em;">CheckThePrice</div>
     <div style="color:#64748b;font-size:14px;">Loading the hottest deals...</div>
