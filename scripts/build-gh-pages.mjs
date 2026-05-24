@@ -55,7 +55,7 @@ const html = `<!DOCTYPE html>
   <meta property="og:description" content="Discover hand-picked online deals with visual Loot Meter scoring, local-shop price comparison, and instant price drop alerts.">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary">
-  <link rel="icon" href="${base}favicon.ico">
+  
 ${cssLinks}
 </head>
 <body style="margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
