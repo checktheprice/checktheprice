@@ -195,8 +195,28 @@ export async function fetchDeals(): Promise<Deal[]> {
   if (!res.ok) throw new Error("Failed to fetch sheet");
   const text = await res.text();
   const deals = parseGviz(text);
-  return deals.length ? deals : FALLBACK_DEALS;
+  if (!deals.length) return FALLBACK_DEALS;
+  // Auto-resolve missing images from the affiliate link via Microlink (no key, free tier).
+  const enriched = await Promise.all(
+    deals.map(async (d) => {
+      if (d.image || !d.affiliateLink || d.affiliateLink === "#") return d;
+      try {
+        const r = await fetch(
+          `https://api.microlink.io/?url=${encodeURIComponent(d.affiliateLink)}`,
+        );
+        const j = await r.json();
+        const img = j?.data?.image?.url || j?.data?.logo?.url || "";
+        return { ...d, image: img || PLACEHOLDER_IMG };
+      } catch {
+        return { ...d, image: PLACEHOLDER_IMG };
+      }
+    }),
+  );
+  return enriched;
 }
+
+const PLACEHOLDER_IMG =
+  "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&q=80";
 
 export function calcDiscount(mrp: number, online: number): number {
   if (mrp <= 0) return 0;
