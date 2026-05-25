@@ -187,7 +187,7 @@ function parseGviz(text: string): Deal[] {
 }
 
 export async function fetchDeals(): Promise<Deal[]> {
-  if (!GOOGLE_SHEET_ID || GOOGLE_SHEET_ID === "YOUR_GOOGLE_SHEET_ID_HERE") {
+  if (!GOOGLE_SHEET_ID || (GOOGLE_SHEET_ID as string).startsWith("YOUR_")) {
     return FALLBACK_DEALS;
   }
   const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
