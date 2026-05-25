@@ -169,6 +169,10 @@ function parseGviz(text: string): Deal[] {
       const hot = String(get("hotdeal") || "")
         .toLowerCase()
         .trim();
+      const rawLink = String(
+        get("affiliatelink", "affiliate_link", "link", "url", "buylink", "producturl") || "",
+      ).trim();
+      const affiliateLink = normalizeUrl(rawLink);
       return {
         id: String(i),
         title: String(get("title") || ""),
@@ -176,7 +180,7 @@ function parseGviz(text: string): Deal[] {
         image: String(get("image") || ""),
         onlinePrice,
         mrp: mrp > 0 ? mrp : onlinePrice, // fallback so card still renders
-        affiliateLink: String(get("affiliatelink", "affiliate_link", "link", "url") || "#"),
+        affiliateLink: affiliateLink || "#",
         source,
         couponCode: String(get("couponcode") || "").trim() || undefined,
         hotDeal: hot === "true" || hot === "yes" || hot === "1",
@@ -184,6 +188,27 @@ function parseGviz(text: string): Deal[] {
       };
     })
     .filter((d: Deal) => d.title && d.mrp > 0 && d.onlinePrice > 0);
+}
+
+export function normalizeUrl(url: string): string {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^\/\//.test(trimmed)) return "https:" + trimmed;
+  // Skip obvious non-URLs
+  if (!/\./.test(trimmed)) return "";
+  return "https://" + trimmed.replace(/^\/+/, "");
+}
+
+export function isValidAffiliateLink(url: string | undefined | null): boolean {
+  if (!url || url === "#") return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export async function fetchDeals(): Promise<Deal[]> {
