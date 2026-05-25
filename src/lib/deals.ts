@@ -18,7 +18,7 @@ export interface Deal {
 // 3. Copy the ID from the URL: docs.google.com/spreadsheets/d/<THIS_ID>/edit
 // Required columns (row 1 = headers):
 // Title | Category | Image | OnlinePrice | MRP | AffiliateLink | Source | CouponCode | HotDeal
-export const GOOGLE_SHEET_ID = "YOUR_GOOGLE_SHEET_ID_HERE";
+export const GOOGLE_SHEET_ID = "1OaATk_qm7XIRDbC9T59FIAapXmYNhY3fLVdLa94kAeY";
 export const SHEET_NAME = "Sheet1";
 
 const FALLBACK_DEALS: Deal[] = [
@@ -136,17 +136,26 @@ function parseGviz(text: string): Deal[] {
   if (start === -1 || end === -1) throw new Error("Invalid Sheets response");
   const json = JSON.parse(text.slice(start, end + 1));
   const cols: string[] = json.table.cols.map((c: any) =>
-    String(c.label || c.id || "").trim().toLowerCase(),
+    String(c.label || c.id || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]/g, ""),
   );
   return json.table.rows
     .map((row: any, i: number) => {
-      const get = (key: string) => {
-        const idx = cols.indexOf(key.toLowerCase());
-        if (idx === -1) return "";
-        const cell = row.c?.[idx];
-        return cell ? (cell.v ?? "") : "";
+      const get = (...keys: string[]) => {
+        for (const key of keys) {
+          const idx = cols.indexOf(
+            key.toLowerCase().replace(/[\s_-]/g, ""),
+          );
+          if (idx === -1) continue;
+          const cell = row.c?.[idx];
+          const v = cell ? (cell.v ?? "") : "";
+          if (v !== "" && v != null) return v;
+        }
+        return "";
       };
-      const onlinePrice = Number(get("onlineprice")) || 0;
+      const onlinePrice = Number(get("price", "onlineprice")) || 0;
       const mrp = Number(get("mrp")) || 0;
       const sourceRaw = String(get("source") || "").trim();
       const source =
@@ -166,8 +175,8 @@ function parseGviz(text: string): Deal[] {
         category: String(get("category") || "General"),
         image: String(get("image") || ""),
         onlinePrice,
-        mrp,
-        affiliateLink: String(get("affiliatelink") || "#"),
+        mrp: mrp > 0 ? mrp : onlinePrice, // fallback so card still renders
+        affiliateLink: String(get("affiliatelink", "affiliate_link", "link", "url") || "#"),
         source,
         couponCode: String(get("couponcode") || "").trim() || undefined,
         hotDeal: hot === "true" || hot === "yes" || hot === "1",
@@ -178,7 +187,7 @@ function parseGviz(text: string): Deal[] {
 }
 
 export async function fetchDeals(): Promise<Deal[]> {
-  if (!GOOGLE_SHEET_ID || GOOGLE_SHEET_ID === "YOUR_GOOGLE_SHEET_ID_HERE") {
+  if (!GOOGLE_SHEET_ID || (GOOGLE_SHEET_ID as string).startsWith("YOUR_")) {
     return FALLBACK_DEALS;
   }
   const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
