@@ -4,6 +4,7 @@ import { Bell, ExternalLink, Flame, TrendingDown } from "lucide-react";
 import {
   type Deal,
   calcDiscount,
+  isValidAffiliateLink,
   localShopPrice,
   lootLevel,
 } from "@/lib/deals";
@@ -40,13 +41,36 @@ export function DealCard({ deal, onAlert }: Props) {
   const savings = localPrice - deal.onlinePrice;
   const level = lootLevel(discount);
   const style = lootStyles[level];
+  const linkOk = isValidAffiliateLink(deal.affiliateLink);
+
+  const openLink = () => {
+    if (!linkOk) return;
+    window.open(deal.affiliateLink, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div
-      className="group relative flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-300 hover:-translate-y-1"
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-300 hover:-translate-y-1 ${
+        linkOk ? "cursor-pointer" : ""
+      }`}
       style={{
         background: "var(--gradient-card)",
         boxShadow: "var(--shadow-card)",
+      }}
+      onClick={(e) => {
+        // Avoid hijacking clicks on inner buttons/links
+        const target = e.target as HTMLElement;
+        if (target.closest("a,button")) return;
+        openLink();
+      }}
+      role={linkOk ? "link" : undefined}
+      tabIndex={linkOk ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!linkOk) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openLink();
+        }
       }}
     >
       <div className="relative aspect-square overflow-hidden bg-muted">
@@ -125,19 +149,29 @@ export function DealCard({ deal, onAlert }: Props) {
         </div>
 
         <div className="mt-auto flex gap-2 pt-1">
-          <Button asChild className="flex-1" size="sm">
-            <a
-              href={deal.affiliateLink}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Grab Deal <ExternalLink className="ml-1 h-3.5 w-3.5" />
-            </a>
-          </Button>
+          {linkOk ? (
+            <Button asChild className="flex-1" size="sm">
+              <a
+                href={deal.affiliateLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Grab Deal <ExternalLink className="ml-1 h-3.5 w-3.5" />
+              </a>
+            </Button>
+          ) : (
+            <Button className="flex-1" size="sm" disabled>
+              Link unavailable
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onAlert(deal)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAlert(deal);
+            }}
             aria-label="Set price drop alert"
           >
             <Bell className="h-4 w-4" />
