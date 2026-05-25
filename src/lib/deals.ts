@@ -6,6 +6,10 @@ export interface Deal {
   onlinePrice: number;
   mrp: number;
   affiliateLink: string;
+  source?: "Amazon" | "Flipkart" | "Other";
+  couponCode?: string;
+  hotDeal?: boolean;
+  addedAt?: number; // timestamp for sorting "Price Drops"
 }
 
 // 👉 REPLACE WITH YOUR GOOGLE SHEET ID
@@ -13,7 +17,7 @@ export interface Deal {
 // 2. Click Share → "Anyone with the link" → Viewer
 // 3. Copy the ID from the URL: docs.google.com/spreadsheets/d/<THIS_ID>/edit
 // Required columns (row 1 = headers):
-// Title | Category | Image | OnlinePrice | MRP | AffiliateLink
+// Title | Category | Image | OnlinePrice | MRP | AffiliateLink | Source | CouponCode | HotDeal
 export const GOOGLE_SHEET_ID = "YOUR_GOOGLE_SHEET_ID_HERE";
 export const SHEET_NAME = "Sheet1";
 
@@ -27,6 +31,10 @@ const FALLBACK_DEALS: Deal[] = [
     onlinePrice: 2499,
     mrp: 8999,
     affiliateLink: "#",
+    source: "Amazon",
+    couponCode: "SOUND200",
+    hotDeal: true,
+    addedAt: Date.now() - 1000 * 60 * 60 * 2,
   },
   {
     id: "demo-2",
@@ -37,6 +45,9 @@ const FALLBACK_DEALS: Deal[] = [
     onlinePrice: 3299,
     mrp: 5999,
     affiliateLink: "#",
+    source: "Flipkart",
+    hotDeal: false,
+    addedAt: Date.now() - 1000 * 60 * 60 * 10,
   },
   {
     id: "demo-3",
@@ -47,6 +58,9 @@ const FALLBACK_DEALS: Deal[] = [
     onlinePrice: 899,
     mrp: 1499,
     affiliateLink: "#",
+    source: "Flipkart",
+    couponCode: "STYLE100",
+    addedAt: Date.now() - 1000 * 60 * 60 * 24,
   },
   {
     id: "demo-4",
@@ -57,6 +71,61 @@ const FALLBACK_DEALS: Deal[] = [
     onlinePrice: 1799,
     mrp: 4999,
     affiliateLink: "#",
+    source: "Amazon",
+    hotDeal: true,
+    addedAt: Date.now() - 1000 * 60 * 30,
+  },
+  {
+    id: "demo-5",
+    title: "Portable Bluetooth Speaker — Bass Boost",
+    category: "Electronics",
+    image:
+      "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=800&q=80",
+    onlinePrice: 799,
+    mrp: 2999,
+    affiliateLink: "#",
+    source: "Amazon",
+    couponCode: "BASS50",
+    hotDeal: true,
+    addedAt: Date.now() - 1000 * 60 * 90,
+  },
+  {
+    id: "demo-6",
+    title: "Running Shoes — Lightweight Mesh",
+    category: "Fashion",
+    image:
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80",
+    onlinePrice: 1299,
+    mrp: 3499,
+    affiliateLink: "#",
+    source: "Flipkart",
+    addedAt: Date.now() - 1000 * 60 * 60 * 5,
+  },
+  {
+    id: "demo-7",
+    title: "Stainless Vacuum Water Bottle 1L",
+    category: "Home",
+    image:
+      "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800&q=80",
+    onlinePrice: 349,
+    mrp: 999,
+    affiliateLink: "#",
+    source: "Amazon",
+    couponCode: "HYDRATE",
+    addedAt: Date.now() - 1000 * 60 * 60 * 8,
+  },
+  {
+    id: "demo-8",
+    title: "True Wireless Earbuds — 30h Playback",
+    category: "Electronics",
+    image:
+      "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=800&q=80",
+    onlinePrice: 1499,
+    mrp: 4999,
+    affiliateLink: "#",
+    source: "Flipkart",
+    hotDeal: true,
+    addedAt: Date.now() - 1000 * 60 * 15,
   },
 ];
 
@@ -79,6 +148,18 @@ function parseGviz(text: string): Deal[] {
       };
       const onlinePrice = Number(get("onlineprice")) || 0;
       const mrp = Number(get("mrp")) || 0;
+      const sourceRaw = String(get("source") || "").trim();
+      const source =
+        sourceRaw.toLowerCase() === "amazon"
+          ? "Amazon"
+          : sourceRaw.toLowerCase() === "flipkart"
+            ? "Flipkart"
+            : sourceRaw
+              ? "Other"
+              : undefined;
+      const hot = String(get("hotdeal") || "")
+        .toLowerCase()
+        .trim();
       return {
         id: String(i),
         title: String(get("title") || ""),
@@ -87,6 +168,10 @@ function parseGviz(text: string): Deal[] {
         onlinePrice,
         mrp,
         affiliateLink: String(get("affiliatelink") || "#"),
+        source,
+        couponCode: String(get("couponcode") || "").trim() || undefined,
+        hotDeal: hot === "true" || hot === "yes" || hot === "1",
+        addedAt: Date.now() - i * 60_000,
       };
     })
     .filter((d: Deal) => d.title && d.mrp > 0 && d.onlinePrice > 0);
