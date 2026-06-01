@@ -215,29 +215,28 @@ export async function fetchDeals(): Promise<Deal[]> {
   if (!GOOGLE_SHEET_ID || (GOOGLE_SHEET_ID as string).startsWith("YOUR_")) {
     return FALLBACK_DEALS;
   }
-  const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch sheet");
-  const text = await res.text();
-  const deals = parseGviz(text);
+  const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&_cb=${Date.now()}`;
+  let text: string;
+  try {
+    const res = await fetch(url, { cache: "no-store", redirect: "follow" });
+    if (!res.ok) throw new Error(`Sheet HTTP ${res.status}`);
+    text = await res.text();
+  } catch (e) {
+    console.error("[deals] Failed to fetch Google Sheet:", e);
+    return FALLBACK_DEALS;
+  }
+  let deals: Deal[] = [];
+  try {
+    deals = parseGviz(text);
+  } catch (e) {
+    console.error("[deals] Failed to parse sheet:", e);
+    return FALLBACK_DEALS;
+  }
   if (!deals.length) return FALLBACK_DEALS;
-  // Auto-resolve missing images from the affiliate link via Microlink (no key, free tier).
-  const enriched = await Promise.all(
-    deals.map(async (d) => {
-      if (d.image || !d.affiliateLink || d.affiliateLink === "#") return d;
-      try {
-        const r = await fetch(
-          `https://api.microlink.io/?url=${encodeURIComponent(d.affiliateLink)}`,
-        );
-        const j = await r.json();
-        const img = j?.data?.image?.url || j?.data?.logo?.url || "";
-        return { ...d, image: img || PLACEHOLDER_IMG };
-      } catch {
-        return { ...d, image: PLACEHOLDER_IMG };
-      }
-    }),
-  );
-  return enriched;
+  // Ensure every card has an image — use a placeholder when missing.
+  // Avoid Microlink at runtime: in production it often rate-limits / blocks
+  // CORS, which would hang the whole fetch and leave the grid empty.
+  return deals.map((d) => (d.image ? d : { ...d, image: PLACEHOLDER_IMG }));
 }
 
 const PLACEHOLDER_IMG =
