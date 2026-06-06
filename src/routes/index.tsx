@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { Search, Tag, Sparkles, TrendingDown, Flame } from "lucide-react";
+import { Search, Tag, Sparkles, TrendingDown, Flame, Bug } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DealCard } from "@/components/DealCard";
 import { PriceAlertModal } from "@/components/PriceAlertModal";
-import { fetchDeals, calcDiscount, type Deal } from "@/lib/deals";
+import { fetchDeals, calcDiscount, type Deal, type FetchDebugInfo } from "@/lib/deals";
 
 const dealsQueryOptions = queryOptions({
   queryKey: ["deals"],
