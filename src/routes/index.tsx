@@ -42,11 +42,13 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { data: deals, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     ...dealsQueryOptions,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
+  const deals = data?.deals ?? [];
+  const debug = data?.debug;
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
