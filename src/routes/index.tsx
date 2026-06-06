@@ -41,6 +41,73 @@ export const Route = createFileRoute("/")({
   }),
 });
 
+function DebugPanel({
+  debug,
+  isLoading,
+  error,
+}: {
+  debug: FetchDebugInfo | undefined;
+  isLoading: boolean;
+  error: Error | null;
+}) {
+  if (!debug) return null;
+  return (
+    <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 text-sm">
+      <div className="mb-2 flex items-center gap-2 font-semibold text-yellow-600">
+        <Bug className="h-4 w-4" />
+        Debug Panel
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <span className="text-muted-foreground">Sheet ID:</span>{" "}
+          <span className="break-all font-mono text-foreground">{debug.sheetId}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Sheet Name:</span>{" "}
+          <span className="font-mono text-foreground">{debug.sheetName}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Status:</span>{" "}
+          <span className={`font-mono font-bold ${debug.status === 200 ? "text-green-600" : debug.status ? "text-red-600" : "text-muted-foreground"}`}>
+            {isLoading ? "Loading…" : debug.status ?? "—"}
+          </span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Deals Fetched:</span>{" "}
+          <span className="font-mono text-foreground">{debug.rowCount}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Timestamp:</span>{" "}
+          <span className="font-mono text-foreground">{debug.timestamp}</span>
+        </div>
+        {debug.error && (
+          <div className="col-span-full">
+            <span className="text-muted-foreground">Error:</span>{" "}
+            <span className="font-mono text-destructive">{debug.error}</span>
+          </div>
+        )}
+        {error && (
+          <div className="col-span-full">
+            <span className="text-muted-foreground">React Query Error:</span>{" "}
+            <span className="font-mono text-destructive">{error.message}</span>
+          </div>
+        )}
+        <div className="col-span-full">
+          <span className="text-muted-foreground">Fetch URL:</span>{" "}
+          <a
+            href={debug.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all font-mono text-primary underline"
+          >
+            {debug.url}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Index() {
   const { data, isLoading, error } = useQuery({
     ...dealsQueryOptions,
