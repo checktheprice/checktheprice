@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { Search, Tag, Sparkles, TrendingDown, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,26 @@ import { DealCard } from "@/components/DealCard";
 import { PriceAlertModal } from "@/components/PriceAlertModal";
 import { fetchDeals, calcDiscount, type Deal } from "@/lib/deals";
 
+const dealsQueryOptions = queryOptions({
+  queryKey: ["deals"],
+  queryFn: fetchDeals,
+  staleTime: 5 * 60_000,
+  gcTime: 30 * 60_000,
+  retry: 1,
+});
+
 export const Route = createFileRoute("/")({
   component: Index,
+  // Prime the cache server-side so deals are baked into SSR HTML.
+  // Without this, every refresh shows skeletons and relies on a
+  // successful client-side fetch — which can silently fail in prod.
+  loader: async ({ context }) => {
+    try {
+      await context.queryClient.ensureQueryData(dealsQueryOptions);
+    } catch (e) {
+      console.error("[deals] loader prefetch failed", e);
+    }
+  },
   head: () => ({
     meta: [
       { title: "CheckThePrice — Hottest Online Deals & Loot Alerts" },
@@ -25,9 +43,9 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { data: deals, isLoading, error } = useQuery({
-    queryKey: ["deals"],
-    queryFn: fetchDeals,
+    ...dealsQueryOptions,
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const [search, setSearch] = useState("");
