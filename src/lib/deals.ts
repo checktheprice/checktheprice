@@ -211,32 +211,70 @@ export function isValidAffiliateLink(url: string | undefined | null): boolean {
   }
 }
 
-export async function fetchDeals(): Promise<Deal[]> {
+export interface FetchDebugInfo {
+  url: string;
+  status: number | null;
+  error: string | null;
+  sheetName: string;
+  sheetId: string;
+  rowCount: number;
+  timestamp: string;
+}
+
+export async function fetchDeals(): Promise<{ deals: Deal[]; debug: FetchDebugInfo }> {
+  const debug: FetchDebugInfo = {
+    url: "",
+    status: null,
+    error: null,
+    sheetName: SHEET_NAME,
+    sheetId: GOOGLE_SHEET_ID,
+    rowCount: 0,
+    timestamp: new Date().toISOString(),
+  };
+
   if (!GOOGLE_SHEET_ID || (GOOGLE_SHEET_ID as string).startsWith("YOUR_")) {
-    return FALLBACK_DEALS;
+    debug.error = "No valid GOOGLE_SHEET_ID configured.";
+    return { deals: FALLBACK_DEALS, debug };
   }
+
   const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&_cb=${Date.now()}`;
+  debug.url = url;
+
   let text: string;
   try {
     const res = await fetch(url, { cache: "no-store", redirect: "follow" });
-    if (!res.ok) throw new Error(`Sheet HTTP ${res.status}`);
+    debug.status = res.status;
+    if (!res.ok) {
+      debug.error = `Sheet HTTP ${res.status}`;
+      return { deals: FALLBACK_DEALS, debug };
+    }
     text = await res.text();
   } catch (e) {
+    debug.error = String(e);
     console.error("[deals] Failed to fetch Google Sheet:", e);
-    return FALLBACK_DEALS;
+    return { deals: FALLBACK_DEALS, debug };
   }
+
   let deals: Deal[] = [];
   try {
     deals = parseGviz(text);
   } catch (e) {
+    debug.error = String(e);
     console.error("[deals] Failed to parse sheet:", e);
-    return FALLBACK_DEALS;
+    return { deals: FALLBACK_DEALS, debug };
   }
-  if (!deals.length) return FALLBACK_DEALS;
-  // Ensure every card has an image — use a placeholder when missing.
-  // Avoid Microlink at runtime: in production it often rate-limits / blocks
-  // CORS, which would hang the whole fetch and leave the grid empty.
-  return deals.map((d) => (d.image ? d : { ...d, image: PLACEHOLDER_IMG }));
+
+  debug.rowCount = deals.length;
+
+  if (!deals.length) {
+    debug.error = "Sheet parsed but returned zero valid rows.";
+    return { deals: FALLBACK_DEALS, debug };
+  }
+
+  return {
+    deals: deals.map((d) => (d.image ? d : { ...d, image: PLACEHOLDER_IMG })),
+    debug,
+  };
 }
 
 const PLACEHOLDER_IMG =
