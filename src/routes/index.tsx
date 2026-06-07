@@ -19,9 +19,6 @@ const dealsQueryOptions = queryOptions({
 
 export const Route = createFileRoute("/")({
   component: Index,
-  // Prime the cache server-side so deals are baked into SSR HTML.
-  // Without this, every refresh shows skeletons and relies on a
-  // successful client-side fetch — which can silently fail in prod.
   loader: async ({ context }) => {
     try {
       await context.queryClient.ensureQueryData(dealsQueryOptions);
@@ -52,12 +49,12 @@ function DebugPanel({
 }) {
   if (!debug) return null;
   return (
-    <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 text-sm">
+    <div className="mb-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-3 text-xs">
       <div className="mb-2 flex items-center gap-2 font-semibold text-yellow-600">
-        <Bug className="h-4 w-4" />
+        <Bug className="h-3.5 w-3.5" />
         Debug Panel
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         <div>
           <span className="text-muted-foreground">Sheet ID:</span>{" "}
           <span className="break-all font-mono text-foreground">{debug.sheetId}</span>
@@ -75,10 +72,6 @@ function DebugPanel({
         <div>
           <span className="text-muted-foreground">Deals Fetched:</span>{" "}
           <span className="font-mono text-foreground">{debug.rowCount}</span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Timestamp:</span>{" "}
-          <span className="font-mono text-foreground">{debug.timestamp}</span>
         </div>
         {debug.error && (
           <div className="col-span-full">
@@ -149,62 +142,59 @@ function Index() {
           className="absolute inset-0 -z-10"
           style={{ background: "var(--gradient-hero)" }}
         />
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 text-foreground">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-foreground">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-              <Tag className="h-5 w-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+              <Tag className="h-4 w-4" />
             </div>
-            <span className="text-lg font-bold tracking-tight">
+            <span className="text-base font-bold tracking-tight">
               CheckThePrice
             </span>
           </div>
-          <div className="hidden items-center gap-2 text-sm font-medium text-muted-foreground sm:flex">
-            <Sparkles className="h-4 w-4" />
+          <div className="hidden items-center gap-2 text-xs font-medium text-muted-foreground sm:flex">
+            <Sparkles className="h-3.5 w-3.5" />
             <span>Updated daily</span>
           </div>
         </nav>
 
-        <div className="mx-auto max-w-4xl px-6 pb-16 pt-8 text-center sm:pb-20 sm:pt-12">
+        <div className="mx-auto max-w-4xl px-4 pb-6 pt-3 text-center sm:pb-8 sm:pt-4">
           <h1
-            className="text-5xl font-extrabold tracking-tight sm:text-7xl"
+            className="text-3xl font-extrabold tracking-tight sm:text-5xl"
             style={{ color: "#ff9900" }}
           >
             CheckThePrice
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base font-semibold text-foreground sm:text-lg">
+          <p className="mx-auto mt-2 max-w-2xl text-sm font-semibold text-foreground sm:text-base">
             🔥 Hottest Online Deals vs Offline Market Prices
           </p>
-          <p className="mx-auto mt-1.5 max-w-2xl text-xs italic text-muted-foreground sm:text-sm">
-            Loot meters are calculated automatically. Real-time updates via Google Sheets.
-          </p>
 
-          <div className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-full bg-card p-1.5 shadow-lg border">
-            <Search className="ml-3 h-5 w-5 text-muted-foreground" />
+          <div className="mx-auto mt-4 flex max-w-xl items-center gap-2 rounded-full bg-card p-1 shadow-lg border">
+            <Search className="ml-3 h-4 w-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search deals..."
-              className="border-0 bg-transparent text-foreground shadow-none focus-visible:ring-0"
+              className="border-0 bg-transparent text-sm text-foreground shadow-none focus-visible:ring-0"
             />
           </div>
         </div>
       </header>
 
-      {/* Filters */}
-      <section className="sticky top-0 z-10 border-b bg-background/85 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 overflow-x-auto px-6 py-3">
+      {/* Filters - Horizontal scroll */}
+      <section className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar">
           <Button
             size="sm"
             onClick={() => setFilter(filter === "hot" ? "all" : "hot")}
             className={`shrink-0 transition-all duration-200 ${
               filter === "hot"
                 ? "bg-loot-hot hover:bg-loot-hot text-category-active-text font-bold shadow-md scale-105"
-                : "bg-muted/50 border border-border/80 text-foreground hover:bg-muted hover:border-border font-medium shadow-sm"
+                : "bg-muted/50 border border-border/80 text-foreground hover:bg-muted hover:border-border font-medium shadow-sm text-xs"
             }`}
           >
-            <Flame className="mr-1 h-4 w-4" /> Hot Loot
+            <Flame className="mr-1 h-3.5 w-3.5" /> Hot Loot
           </Button>
-          <div className="h-6 w-px bg-border" />
+          <div className="h-5 w-px bg-border shrink-0" />
           {categories.map((c) => {
             const isActive = category === c;
             let activeClass =
@@ -227,7 +217,7 @@ function Index() {
                 key={c}
                 size="sm"
                 onClick={() => setCategory(c)}
-                className={`shrink-0 transition-all duration-200 ${
+                className={`shrink-0 transition-all duration-200 text-xs ${
                   isActive
                     ? `${activeClass} font-bold shadow-md scale-105`
                     : "bg-muted/50 border border-border/80 text-foreground hover:bg-muted hover:border-border font-medium shadow-sm"
@@ -240,20 +230,20 @@ function Index() {
         </div>
       </section>
 
-      {/* Grid */}
-      <main className="mx-auto max-w-7xl px-6 py-10">
+      {/* Grid - One card per row */}
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4">
         <DebugPanel debug={debug} isLoading={isLoading} error={error} />
 
         {isLoading && (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-[480px] rounded-2xl" />
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-[140px] rounded-xl w-full" />
             ))}
           </div>
         )}
 
         {error && (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center">
             <p className="font-semibold text-destructive">
               Couldn't load deals from the Google Sheet.
             </p>
@@ -265,20 +255,20 @@ function Index() {
         )}
 
         {!isLoading && !error && filtered.length === 0 && (
-          <div className="py-20 text-center text-muted-foreground">
+          <div className="py-16 text-center text-muted-foreground">
             <TrendingDown className="mx-auto mb-3 h-10 w-10 opacity-40" />
             No deals match your filters.
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="flex flex-col gap-3">
           {filtered.map((d) => (
             <DealCard key={d.id} deal={d} onAlert={setAlertDeal} />
           ))}
         </div>
       </main>
 
-      <footer className="border-t py-8 text-center text-sm text-muted-foreground">
+      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
         <p>
           © {new Date().getFullYear()} CheckThePrice — Powered by your Google
           Sheet
