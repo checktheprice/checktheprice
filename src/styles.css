@@ -179,4 +179,13 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+
+  /* Hide scrollbar for horizontal scrolling elements */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
