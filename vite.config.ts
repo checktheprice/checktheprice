@@ -13,7 +13,6 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    base: "/checktheprice/",
     build: {
       manifest: true,
     },
