@@ -8,6 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DealCard } from "@/components/DealCard";
 import { PriceAlertModal } from "@/components/PriceAlertModal";
 import { fetchDeals, calcDiscount, type Deal } from "@/lib/deals";
+import { TrustSection } from "@/components/TrustSection";
+import { FAQ, faqJsonLd } from "@/components/FAQ";
+import { LastUpdated } from "@/components/LastUpdated";
 
 const dealsQueryOptions = queryOptions({
   queryKey: ["deals"],
@@ -33,6 +36,34 @@ export const Route = createFileRoute("/")({
         name: "description",
         content:
           "Discover hand-picked online deals with visual Loot Meter scoring, local-shop price comparison, and instant price drop alerts.",
+      },
+      { property: "og:title", content: "CheckThePrice — Hottest Online Deals & Loot Alerts" },
+      {
+        property: "og:description",
+        content:
+          "Hand-picked online deals with Loot Meter scoring, local-shop price comparison, and instant alerts.",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://checktheprice.lovable.app/" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://checktheprice.lovable.app/" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(faqJsonLd),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "CheckThePrice",
+          url: "https://checktheprice.lovable.app/",
+          description:
+            "Hand-picked online deals with Loot Meter scoring and local-shop price comparison.",
+        }),
       },
     ],
   }),
@@ -171,6 +202,7 @@ function Index() {
 
       {/* Grid - One card per row */}
       <main id="deals" className="mx-auto max-w-7xl px-3 py-4 sm:px-4">
+        <LastUpdated />
         {isLoading && (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -205,12 +237,8 @@ function Index() {
         </div>
       </main>
 
-      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        <p>
-          © {new Date().getFullYear()} CheckThePrice — Powered by your Google
-          Sheet
-        </p>
-      </footer>
+      <TrustSection />
+      <FAQ />
 
       <PriceAlertModal
         deal={alertDeal}
