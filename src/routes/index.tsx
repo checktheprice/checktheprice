@@ -117,7 +117,10 @@ function Index() {
       </header>
 
       {/* Filters - Horizontal scroll */}
-      <section className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
+      <section
+        id="categories"
+        className="sticky top-[52px] z-10 border-b bg-background/90 backdrop-blur"
+      >
         <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar">
           <Button
             size="sm"
@@ -167,7 +170,7 @@ function Index() {
       </section>
 
       {/* Grid - One card per row */}
-      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4">
+      <main id="deals" className="mx-auto max-w-7xl px-3 py-4 sm:px-4">
         {isLoading && (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
