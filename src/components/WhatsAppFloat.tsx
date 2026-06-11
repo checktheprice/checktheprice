@@ -1,0 +1,24 @@
+const WHATSAPP_URL =
+  "https://whatsapp.com/channel/0029VafqnsWLI8YWYB5LNj3u";
+
+export function WhatsAppFloat() {
+  return (
+    <a
+      href={WHATSAPP_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Join WhatsApp Channel"
+      className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#1ebe5d]"
+    >
+      <svg
+        viewBox="0 0 32 32"
+        className="h-5 w-5"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M19.11 17.21c-.27-.14-1.61-.79-1.86-.88-.25-.09-.43-.14-.61.14-.18.27-.7.88-.86 1.06-.16.18-.32.2-.59.07-.27-.14-1.14-.42-2.18-1.34-.81-.72-1.35-1.6-1.51-1.87-.16-.27-.02-.42.12-.55.12-.12.27-.32.41-.48.14-.16.18-.27.27-.45.09-.18.05-.34-.02-.48-.07-.14-.61-1.46-.84-2-.22-.53-.45-.46-.61-.47h-.52c-.18 0-.48.07-.73.34-.25.27-.96.94-.96 2.29 0 1.35.98 2.66 1.12 2.84.14.18 1.94 2.96 4.7 4.15.66.28 1.17.45 1.57.58.66.21 1.26.18 1.74.11.53-.08 1.61-.66 1.84-1.3.23-.64.23-1.18.16-1.3-.07-.12-.25-.18-.52-.32zM16.02 5.33c-5.86 0-10.62 4.76-10.62 10.62 0 1.87.49 3.7 1.43 5.31L5 26.67l5.55-1.45a10.59 10.59 0 0 0 5.47 1.5h.01c5.85 0 10.61-4.76 10.61-10.62 0-2.83-1.1-5.5-3.1-7.5a10.55 10.55 0 0 0-7.52-3.27z" />
+      </svg>
+      <span className="hidden sm:inline">Join WhatsApp</span>
+    </a>
+  );
+}

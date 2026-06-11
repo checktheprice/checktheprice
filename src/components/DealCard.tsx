@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Flame, TrendingDown } from "lucide-react";
+import { ShareButton } from "@/components/ShareButton";
 import {
   type Deal,
   calcDiscount,
@@ -124,6 +125,7 @@ export function DealCard({ deal, onAlert }: Props) {
           >
             Alert
           </button>
+          <ShareButton deal={deal} />
         </div>
       </div>
     </div>
