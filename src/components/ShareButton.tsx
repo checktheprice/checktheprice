@@ -6,13 +6,25 @@ interface Props {
   deal: Deal;
 }
 
+const SITE_URL = "https://checktheprice.lovable.app";
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
 export function ShareButton({ deal }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const pageUrl =
-    typeof window !== "undefined" ? window.location.href : "";
-  const text = `🔥 ${deal.title} — ₹${deal.onlinePrice.toLocaleString()} (MRP ₹${deal.mrp.toLocaleString()})\n${deal.affiliateLink}\nMore deals: ${pageUrl}`;
+  const discount = deal.mrp > 0
+    ? Math.round(((deal.mrp - deal.onlinePrice) / deal.mrp) * 100)
+    : 0;
+  const dealUrl = `${SITE_URL}/deal/${slugify(deal.title)}`;
+  const text = `🔥 ${deal.title} Deal\n₹${deal.onlinePrice.toLocaleString()} (MRP ₹${deal.mrp.toLocaleString()})${discount > 0 ? ` — ${discount}% OFF` : ""}\n\n${dealUrl}`;
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -21,7 +33,7 @@ export function ShareButton({ deal }: Props) {
         await navigator.share({
           title: deal.title,
           text,
-          url: deal.affiliateLink,
+          url: dealUrl,
         });
         return;
       } catch {
@@ -32,11 +44,11 @@ export function ShareButton({ deal }: Props) {
   };
 
   const encoded = encodeURIComponent(text);
-  const encodedUrl = encodeURIComponent(deal.affiliateLink);
+  const encodedUrl = encodeURIComponent(dealUrl);
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(dealUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
