@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { Search, Tag, Sparkles, TrendingDown, Flame } from "lucide-react";
+import { Search, Tag, Sparkles, TrendingDown, Flame, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +11,13 @@ import { fetchDeals, calcDiscount, type Deal } from "@/lib/deals";
 import { TrustSection } from "@/components/TrustSection";
 import { FAQ, faqJsonLd } from "@/components/FAQ";
 import { LastUpdated } from "@/components/LastUpdated";
+import {
+  DISCOUNT_RANGES,
+  type DiscountRangeId,
+  inDiscountRange,
+  discountRangeLabel,
+} from "@/lib/discount-ranges";
+import { Link } from "@tanstack/react-router";
 
 const dealsQueryOptions = queryOptions({
   queryKey: ["deals"],
@@ -22,6 +29,15 @@ const dealsQueryOptions = queryOptions({
 
 export const Route = createFileRoute("/")({
   component: Index,
+  validateSearch: (search: Record<string, unknown>) => {
+    const d = typeof search.discount === "string" ? search.discount : undefined;
+    const allowed = DISCOUNT_RANGES.map((r) => r.id);
+    return {
+      discount: (allowed as string[]).includes(d ?? "")
+        ? (d as DiscountRangeId)
+        : undefined,
+    };
+  },
   loader: async ({ context }) => {
     try {
       await context.queryClient.ensureQueryData(dealsQueryOptions);
@@ -77,6 +93,8 @@ function Index() {
   });
   const deals = data?.deals ?? [];
 
+  const { discount: discountRange } = Route.useSearch();
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [filter, setFilter] = useState<"all" | "hot">("all");
@@ -97,9 +115,12 @@ function Index() {
       const matchCat = category === "All" || d.category === category;
       const matchHot =
         filter === "all" || calcDiscount(d.mrp, d.onlinePrice) > 65;
-      return matchSearch && matchCat && matchHot;
+      const matchDiscount =
+        !discountRange ||
+        inDiscountRange(calcDiscount(d.mrp, d.onlinePrice), discountRange);
+      return matchSearch && matchCat && matchHot && matchDiscount;
     });
-  }, [deals, search, category, filter]);
+  }, [deals, search, category, filter, discountRange]);
 
   return (
     <div className="min-h-screen bg-background">
