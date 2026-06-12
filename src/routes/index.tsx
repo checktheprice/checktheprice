@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
   component: Index,
   validateSearch: (search: Record<string, unknown>) => {
     const d = typeof search.discount === "string" ? search.discount : undefined;
-    const allowed = DISCOUNT_RANGES.map((r) => r.id);
+    const allowed = DISCOUNT_RANGES.map((r: { id: string }) => r.id);
     return {
       discount: (allowed as string[]).includes(d ?? "")
         ? (d as DiscountRangeId)
