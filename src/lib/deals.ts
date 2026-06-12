@@ -296,3 +296,11 @@ export function lootLevel(discount: number): LootLevel {
   if (discount >= 40) return "mid";
   return "low";
 }
+
+export function slugifyTitle(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}

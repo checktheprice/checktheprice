@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Share2, Copy, X, Check } from "lucide-react";
-import type { Deal } from "@/lib/deals";
+import { slugifyTitle, type Deal } from "@/lib/deals";
 
 interface Props {
   deal: Deal;
@@ -8,42 +8,44 @@ interface Props {
 
 const SITE_URL = "https://checktheprice.lovable.app";
 
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
-
 export function ShareButton({ deal }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const sharingRef = useRef(false);
 
   const discount = deal.mrp > 0
     ? Math.round(((deal.mrp - deal.onlinePrice) / deal.mrp) * 100)
     : 0;
-  const dealUrl = `${SITE_URL}/deal/${slugify(deal.title)}`;
-  const text = `🔥 ${deal.title} Deal\n₹${deal.onlinePrice.toLocaleString()} (MRP ₹${deal.mrp.toLocaleString()})${discount > 0 ? ` — ${discount}% OFF` : ""}\n\n${dealUrl}`;
+  const dealUrl = `${SITE_URL}/deal/${slugifyTitle(deal.title)}`;
+  // Message body WITHOUT the URL — the URL is appended only once at send time.
+  const message = `🔥 ${deal.title} - Deal\n₹${deal.onlinePrice.toLocaleString()} (MRP ₹${deal.mrp.toLocaleString()})${discount > 0 ? ` — ${discount}% OFF` : ""}`;
+  const shareText = `${message}\n\n${dealUrl}`;
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
+    if (sharingRef.current) return;
+    sharingRef.current = true;
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
+        // Pass only `text` (which already contains the URL) to avoid platforms
+        // like WhatsApp appending `url` and producing a duplicate link.
         await navigator.share({
           title: deal.title,
-          text,
-          url: dealUrl,
+          text: shareText,
         });
+        sharingRef.current = false;
         return;
       } catch {
         /* fallback to modal */
       }
     }
+    sharingRef.current = false;
     setOpen(true);
   };
 
-  const encoded = encodeURIComponent(text);
+  const encodedText = encodeURIComponent(shareText);
+  const encodedMessage = encodeURIComponent(message);
   const encodedUrl = encodeURIComponent(dealUrl);
 
   const copy = async () => {
@@ -94,7 +96,7 @@ export function ShareButton({ deal }: Props) {
 
             <div className="grid grid-cols-3 gap-2">
               <a
-                href={`https://wa.me/?text=${encoded}`}
+                href={`https://wa.me/?text=${encodedText}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex flex-col items-center gap-1 rounded-lg bg-[#25D366]/10 p-3 text-xs font-semibold text-[#128C7E] hover:bg-[#25D366]/20"
@@ -103,7 +105,7 @@ export function ShareButton({ deal }: Props) {
                 WhatsApp
               </a>
               <a
-                href={`https://t.me/share/url?url=${encodedUrl}&text=${encoded}`}
+                href={`https://t.me/share/url?url=${encodedUrl}&text=${encodedMessage}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex flex-col items-center gap-1 rounded-lg bg-sky-50 p-3 text-xs font-semibold text-sky-700 hover:bg-sky-100"
@@ -112,7 +114,7 @@ export function ShareButton({ deal }: Props) {
                 Telegram
               </a>
               <a
-                href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encoded}`}
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedMessage}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex flex-col items-center gap-1 rounded-lg bg-blue-50 p-3 text-xs font-semibold text-blue-700 hover:bg-blue-100"
