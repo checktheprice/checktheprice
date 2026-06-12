@@ -28,11 +28,13 @@ export function ShareButton({ deal }: Props) {
     sharingRef.current = true;
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        // Pass only `text` (which already contains the URL) to avoid platforms
-        // like WhatsApp appending `url` and producing a duplicate link.
+        // Pass `text` WITHOUT the URL and supply `url` separately. Share targets
+        // (WhatsApp, Telegram, etc.) concatenate them once. Including the URL in
+        // both fields is what causes the duplicate link in shared messages.
         await navigator.share({
           title: deal.title,
-          text: shareText,
+          text: message,
+          url: dealUrl,
         });
         sharingRef.current = false;
         return;
