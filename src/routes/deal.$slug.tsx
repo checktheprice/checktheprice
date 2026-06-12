@@ -90,7 +90,11 @@ function DealPage() {
         <DealCard deal={deal} onAlert={setAlertDeal} />
       </div>
       {alertDeal && (
-        <PriceAlertModal deal={alertDeal} onClose={() => setAlertDeal(null)} />
+        <PriceAlertModal
+          deal={alertDeal}
+          open={!!alertDeal}
+          onOpenChange={(o) => !o && setAlertDeal(null)}
+        />
       )}
     </div>
   );
