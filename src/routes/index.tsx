@@ -224,6 +224,24 @@ function Index() {
       {/* Grid - One card per row */}
       <main id="deals" className="mx-auto max-w-7xl px-3 py-4 sm:px-4">
         <LastUpdated />
+        {discountRange && (
+          <div className="mb-3 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs sm:text-sm">
+            <span className="font-medium text-foreground">
+              Filtering by discount:{" "}
+              <span className="font-bold text-primary">
+                {discountRangeLabel(discountRange)}
+              </span>
+            </span>
+            <Link
+              to="/"
+              search={{ discount: undefined }}
+              hash="deals"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+            >
+              <X className="h-3 w-3" /> Clear
+            </Link>
+          </div>
+        )}
         {isLoading && (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
