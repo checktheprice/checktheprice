@@ -1,13 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
+import { fetchDeals, slugifyTitle } from "@/lib/deals";
 
 const BASE_URL = "https://checktheprice.lovable.app";
+
+interface SitemapEntry {
+  path: string;
+  priority: string;
+  changefreq: string;
+}
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const paths = [
+        const entries: SitemapEntry[] = [
           { path: "/", priority: "1.0", changefreq: "daily" },
           { path: "/about", priority: "0.7", changefreq: "monthly" },
           { path: "/contact", priority: "0.6", changefreq: "monthly" },
@@ -16,7 +23,24 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/privacy", priority: "0.5", changefreq: "yearly" },
           { path: "/terms", priority: "0.5", changefreq: "yearly" },
         ];
-        const urls = paths
+
+        try {
+          const { deals } = await fetchDeals();
+          for (const deal of deals) {
+            const slug = slugifyTitle(deal.title);
+            if (slug) {
+              entries.push({
+                path: `/deal/${slug}`,
+                priority: "0.6",
+                changefreq: "daily",
+              });
+            }
+          }
+        } catch {
+          // If deal fetch fails, still serve the static sitemap
+        }
+
+        const urls = entries
           .map(
             (e) =>
               `  <url>\n    <loc>${BASE_URL}${e.path}</loc>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`,
