@@ -2,12 +2,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Flame, TrendingDown } from "lucide-react";
 import { ShareButton } from "@/components/ShareButton";
+import { useNavigate } from "@tanstack/react-router";
 import {
   type Deal,
   calcDiscount,
   isValidAffiliateLink,
   localShopPrice,
   lootLevel,
+  slugifyTitle,
 } from "@/lib/deals";
 
 interface Props {
@@ -21,10 +23,11 @@ export function DealCard({ deal, onAlert }: Props) {
   const savings = localPrice - deal.onlinePrice;
   const level = lootLevel(discount);
   const linkOk = isValidAffiliateLink(deal.affiliateLink);
+  const navigate = useNavigate();
+  const slug = slugifyTitle(deal.title);
 
-  const openLink = () => {
-    if (!linkOk) return;
-    window.open(deal.affiliateLink, "_blank", "noopener,noreferrer");
+  const openDetails = () => {
+    navigate({ to: "/deal/$slug", params: { slug } });
   };
 
   const levelBadge =
@@ -36,21 +39,18 @@ export function DealCard({ deal, onAlert }: Props) {
 
   return (
     <div
-      className={`group flex w-full gap-3 rounded-xl border bg-white p-3 shadow-sm transition-shadow duration-200 hover:shadow-md ${
-        linkOk ? "cursor-pointer" : ""
-      }`}
+      className="group flex w-full cursor-pointer gap-3 rounded-xl border bg-white p-3 shadow-sm transition-shadow duration-200 hover:shadow-md"
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest("a,button")) return;
-        openLink();
+        openDetails();
       }}
-      role={linkOk ? "link" : undefined}
-      tabIndex={linkOk ? 0 : undefined}
+      role="link"
+      tabIndex={0}
       onKeyDown={(e) => {
-        if (!linkOk) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          openLink();
+          openDetails();
         }
       }}
     >
