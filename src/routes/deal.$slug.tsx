@@ -41,7 +41,7 @@ export const Route = createFileRoute("/deal/$slug")({
     };
   },
   head: ({ params, loaderData }) => {
-    const url = `https://checktheprice.lovable.app/deal/${params.slug}`;
+    const url = `https://checktheprice.vercel.app/deal/${params.slug}`;
     const title = loaderData?.title
       ? `${loaderData.title} — Deal on CheckThePrice`
       : "Deal — CheckThePrice";
@@ -144,7 +144,7 @@ function DealPage() {
       "@type": "Offer",
       priceCurrency: "INR",
       price: deal.onlinePrice,
-      url: `https://checktheprice.lovable.app/deal/${slug}`,
+      url: `https://checktheprice.vercel.app/deal/${slug}`,
       availability: "https://schema.org/InStock",
     },
   };
