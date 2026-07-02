@@ -85,7 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Checktheprice" },
       { name: "twitter:description", content: "Price Drop Finder displays online offers with visual savings indicators and price alerts." },
-      { name: "google-site-verification", content: "rbI_M9yvg_JXjLoIQIwhhTinpWGG20fqpLZ2ckQHbOI" },
+      { name: "google-site-verification", content: "V7VteZl88q3V7aQCL4JC0b5zhAJQzSXMqF7WtXxUjec" },
     ],
     links: [
       {
