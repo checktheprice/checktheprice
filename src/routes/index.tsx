@@ -60,10 +60,10 @@ export const Route = createFileRoute("/")({
           "Hand-picked online deals with Loot Meter scoring, local-shop price comparison, and instant alerts.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://checktheprice.lovable.app/" },
+      { property: "og:url", content: "https://checktheprice.vercel.app/" },
     ],
     links: [
-      { rel: "canonical", href: "https://checktheprice.lovable.app/" },
+      { rel: "canonical", href: "https://checktheprice.vercel.app/" },
     ],
     scripts: [
       {
@@ -76,7 +76,7 @@ export const Route = createFileRoute("/")({
           "@context": "https://schema.org",
           "@type": "WebSite",
           name: "CheckThePrice",
-          url: "https://checktheprice.lovable.app/",
+          url: "https://checktheprice.vercel.app/",
           description:
             "Hand-picked online deals with Loot Meter scoring and local-shop price comparison.",
         }),
