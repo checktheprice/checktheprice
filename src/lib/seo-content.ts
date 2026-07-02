@@ -395,6 +395,189 @@ function toTitleWords(title: string): string {
   return title.replace(/\s+/g, " ").trim();
 }
 
+// ================= Title analyzer =================
+// Extracts product-specific attributes from the full product title so the
+// generated content actually reflects what's being sold — not just the
+// category. This is what makes descriptions unique per product.
+
+interface TitleFacts {
+  cleanTitle: string;
+  productType: string; // e.g. "insulated lunch bag", "wireless earbuds"
+  productNoun: string; // shorter head-noun for reuse, e.g. "lunch bag"
+  capacity?: string; // "5 L", "500 ml", "128 GB", "10000 mAh"
+  size?: string; // "15.6 inch", "42 mm"
+  pack?: string; // "Pack of 3"
+  color?: string;
+  material?: string;
+  audience?: string; // "men and women", "kids", "unisex"
+  attributes: string[]; // extra descriptive words found (insulated, waterproof, wireless...)
+  useCases: string[]; // derived from title keywords
+}
+
+const COLORS = [
+  "black","white","blue","navy","red","green","olive","grey","gray","silver",
+  "gold","rose gold","pink","purple","yellow","orange","brown","beige","maroon",
+  "teal","cyan","turquoise","ivory",
+];
+const MATERIALS = [
+  "stainless steel","cotton","polyester","nylon","leather","pu leather","canvas",
+  "silicone","aluminium","aluminum","plastic","glass","ceramic","wood","bamboo",
+  "cast iron","copper","denim","linen","rayon","microfiber","neoprene","rubber",
+];
+const ATTRIBUTE_KEYWORDS = [
+  "insulated","thermal","waterproof","water-resistant","water resistant","leak-proof","leak proof","leakproof",
+  "wireless","bluetooth","noise-cancelling","noise cancelling","noise-canceling","noise canceling",
+  "rechargeable","foldable","portable","lightweight","heavy-duty","heavy duty",
+  "non-stick","non stick","nonstick","stainless","reusable","eco-friendly","eco friendly",
+  "smart","automatic","manual","adjustable","ergonomic","breathable","quick-dry","quick dry",
+  "unbreakable","shockproof","dustproof","fast charging","fast-charging","wide mouth",
+  "double wall","double-wall","vacuum","hot and cold","hot & cold","printed","embroidered",
+  "slim","compact","professional","premium","organic",
+];
+
+// Product-type dictionary. Order matters — longer/more specific phrases first.
+const PRODUCT_TYPES: Array<{ match: RegExp; type: string; noun: string; useCases: string[] }> = [
+  { match: /insulated\s+lunch\s+bag|lunch\s+bag/i, type: "insulated lunch bag", noun: "lunch bag", useCases: ["carrying lunch to office","school lunches","short trips and picnics","keeping food warm or cool during commutes"] },
+  { match: /tiffin\s+box|lunch\s+box/i, type: "lunch box", noun: "lunch box", useCases: ["office lunches","school tiffin","meal-prep at home","travel meals"] },
+  { match: /water\s+bottle|sipper|thermos|flask/i, type: "water bottle", noun: "bottle", useCases: ["daily hydration at work","gym and workouts","school and college","travel and long drives"] },
+  { match: /backpack|rucksack|laptop\s+bag/i, type: "backpack", noun: "backpack", useCases: ["daily commutes","college and school","short travel","carrying a laptop safely"] },
+  { match: /handbag|sling\s+bag|tote|shoulder\s+bag/i, type: "handbag", noun: "bag", useCases: ["daily use","office","casual outings","gifting"] },
+  { match: /trolley|suitcase|luggage|travel\s+bag|duffle|duffel/i, type: "travel bag", noun: "travel bag", useCases: ["weekend trips","long travel","business travel","family vacations"] },
+  { match: /earbud|airpod|tws/i, type: "wireless earbuds", noun: "earbuds", useCases: ["music on the go","calls and meetings","workouts","daily commutes"] },
+  { match: /headphone|headset/i, type: "headphones", noun: "headphones", useCases: ["long listening sessions","work-from-home calls","gaming","travel"] },
+  { match: /speaker/i, type: "portable speaker", noun: "speaker", useCases: ["home listening","small gatherings","outdoor use","travel"] },
+  { match: /smartwatch|smart\s+watch|fitness\s+band|fitness\s+tracker/i, type: "smartwatch", noun: "watch", useCases: ["daily fitness tracking","notifications on the wrist","sleep monitoring","workouts"] },
+  { match: /power\s?bank/i, type: "power bank", noun: "power bank", useCases: ["backup charging on the go","travel","long workdays","emergencies"] },
+  { match: /charger|adapter/i, type: "charger", noun: "charger", useCases: ["daily charging at home","office","travel","backup for the family"] },
+  { match: /cable|usb\s?-?c|lightning\s+cable/i, type: "charging cable", noun: "cable", useCases: ["daily device charging","desk setup","travel kit","spare for family"] },
+  { match: /laptop|notebook\b/i, type: "laptop", noun: "laptop", useCases: ["work-from-home","college assignments","content consumption","light creative work"] },
+  { match: /tablet|ipad/i, type: "tablet", noun: "tablet", useCases: ["reading and study","entertainment","light productivity","kids' learning"] },
+  { match: /mobile|smartphone|\bphone\b/i, type: "smartphone", noun: "phone", useCases: ["daily communication","photos and videos","apps and productivity","entertainment"] },
+  { match: /television|smart\s+tv|\btv\b/i, type: "smart TV", noun: "TV", useCases: ["home entertainment","streaming","family movie nights","gaming"] },
+  { match: /monitor\b/i, type: "monitor", noun: "monitor", useCases: ["work-from-home setups","study","light gaming","dual-screen productivity"] },
+  { match: /keyboard/i, type: "keyboard", noun: "keyboard", useCases: ["daily typing","office work","light gaming","student use"] },
+  { match: /mouse\b|trackpad/i, type: "computer mouse", noun: "mouse", useCases: ["daily desk use","office","study","travel with a laptop"] },
+  { match: /mixer\s+grinder|mixie/i, type: "mixer grinder", noun: "mixer grinder", useCases: ["daily Indian cooking","chutneys and masalas","smoothies","meal prep"] },
+  { match: /kettle/i, type: "electric kettle", noun: "kettle", useCases: ["quick tea and coffee","instant noodles","hostel and PG rooms","office pantries"] },
+  { match: /induction\s+cooktop|induction/i, type: "induction cooktop", noun: "cooktop", useCases: ["quick cooking","backup to gas","small kitchens","hostel and PG"] },
+  { match: /pressure\s+cooker|cooker\b/i, type: "pressure cooker", noun: "cooker", useCases: ["daily dal and rice","curries","one-pot meals","meal prep"] },
+  { match: /kadhai|kadai|wok\b|frying\s+pan|frypan|tawa/i, type: "cookware", noun: "pan", useCases: ["daily Indian cooking","stir-fry","shallow frying","everyday meals"] },
+  { match: /cookware\s+set|non[- ]?stick\s+set/i, type: "cookware set", noun: "cookware", useCases: ["daily home cooking","new kitchens","gifting to newlyweds","upgrading old pans"] },
+  { match: /shoe|sneaker|trainer|loafer|sandal|slipper|flip[- ]?flop/i, type: "footwear", noun: "footwear", useCases: ["daily wear","walking and light workouts","casual outings","office wear"] },
+  { match: /t[- ]?shirt|tee\b/i, type: "t-shirt", noun: "t-shirt", useCases: ["daily casual wear","layering","weekend outings","gifting"] },
+  { match: /shirt/i, type: "shirt", noun: "shirt", useCases: ["office wear","casual outings","gifting","daily wardrobe"] },
+  { match: /jean|trouser|pant|chino/i, type: "bottomwear", noun: "trousers", useCases: ["daily wear","office","casual outings","travel"] },
+  { match: /kurta|kurti|saree|salwar|lehenga|ethnic/i, type: "ethnic wear", noun: "outfit", useCases: ["daily ethnic wear","festivals","office","gifting"] },
+  { match: /jacket|hoodie|sweatshirt|sweater/i, type: "outerwear", noun: "jacket", useCases: ["cold weather","layering","travel","casual outings"] },
+  { match: /perfume|deo|deodorant|body\s+spray|cologne/i, type: "fragrance", noun: "fragrance", useCases: ["daily wear","office","evenings out","gifting"] },
+  { match: /shampoo|conditioner|hair\s+oil|hair\s+serum/i, type: "hair care product", noun: "product", useCases: ["daily haircare","weekly deep care","travel-size top-ups","gifting"] },
+  { match: /face\s?wash|cleanser|serum|moisturi[sz]er|sunscreen|spf/i, type: "skincare product", noun: "product", useCases: ["daily skincare routine","AM/PM steps","travel","building a starter routine"] },
+  { match: /lipstick|foundation|kajal|eyeliner|mascara|compact|makeup/i, type: "makeup product", noun: "product", useCases: ["daily makeup","office looks","evenings out","gifting"] },
+  { match: /toy|puzzle|lego|board\s+game/i, type: "toy", noun: "toy", useCases: ["indoor playtime","birthday gifting","screen-free fun","learning through play"] },
+  { match: /book|novel|guide/i, type: "book", noun: "book", useCases: ["daily reading","study support","travel reads","gifting"] },
+  { match: /yoga\s+mat|exercise\s+mat/i, type: "yoga mat", noun: "mat", useCases: ["home yoga","stretching","light workouts","meditation"] },
+  { match: /dumbbell|kettlebell|resistance\s+band|skipping\s+rope/i, type: "fitness accessory", noun: "accessory", useCases: ["home workouts","strength training","warm-ups","travel workouts"] },
+  { match: /pillow|cushion|bedsheet|blanket|comforter|mattress/i, type: "home bedding", noun: "bedding", useCases: ["daily use","bedroom refresh","gifting","seasonal change"] },
+  { match: /lamp|light|bulb|led/i, type: "lighting", noun: "light", useCases: ["home lighting","bedside use","desk setup","decor"] },
+  { match: /vacuum\s+cleaner|robot\s+vacuum/i, type: "vacuum cleaner", noun: "vacuum", useCases: ["daily home cleaning","carpets and rugs","car interiors","pet-friendly homes"] },
+  { match: /iron\b|steam\s+iron/i, type: "iron", noun: "iron", useCases: ["daily ironing","office wear","travel","quick touch-ups"] },
+  { match: /trimmer|shaver|epilator|hair\s+dryer|straightener/i, type: "grooming appliance", noun: "appliance", useCases: ["daily grooming","travel","quick touch-ups","gifting"] },
+];
+
+function analyzeTitle(title: string, category: string): TitleFacts {
+  const t = title.replace(/\s+/g, " ").trim();
+  const low = t.toLowerCase();
+
+  const capMatch =
+    low.match(/(\d+(?:\.\d+)?)\s?(litre|liter|liters|litres|l)\b/i) ||
+    low.match(/(\d+(?:\.\d+)?)\s?(ml|milliliter|millilitre)\b/i) ||
+    low.match(/(\d+(?:\.\d+)?)\s?(kg|kilogram|g|gram|grams)\b/i) ||
+    low.match(/(\d+)\s?(gb|tb)\b/i) ||
+    low.match(/(\d+)\s?(mah|w|watt|watts)\b/i);
+  const capacity = capMatch
+    ? (() => {
+        const num = capMatch[1];
+        const unit = capMatch[2].toLowerCase();
+        const norm =
+          /^(litre|liter|liters|litres|l)$/.test(unit) ? "L"
+          : /^(ml|milliliter|millilitre)$/.test(unit) ? "ml"
+          : /^(kg|kilogram)$/.test(unit) ? "kg"
+          : /^(g|gram|grams)$/.test(unit) ? "g"
+          : /^(gb)$/.test(unit) ? "GB"
+          : /^(tb)$/.test(unit) ? "TB"
+          : /^(mah)$/.test(unit) ? "mAh"
+          : /^(w|watt|watts)$/.test(unit) ? "W"
+          : unit;
+        return `${num} ${norm}`;
+      })()
+    : undefined;
+
+  const sizeMatch =
+    low.match(/(\d+(?:\.\d+)?)\s?(inch|inches|"|in)\b/i) ||
+    low.match(/(\d+(?:\.\d+)?)\s?(cm|mm)\b/i);
+  const size = sizeMatch
+    ? `${sizeMatch[1]} ${/^(inch|inches|"|in)$/i.test(sizeMatch[2]) ? "inch" : sizeMatch[2].toLowerCase()}`
+    : undefined;
+
+  const packMatch = low.match(/pack\s+of\s+(\d+)|(\d+)\s?[- ]?piece\s+set|set\s+of\s+(\d+)/i);
+  const pack = packMatch
+    ? `Pack of ${packMatch[1] ?? packMatch[2] ?? packMatch[3]}`
+    : undefined;
+
+  const color = COLORS.find((c) => new RegExp(`\\b${c}\\b`, "i").test(low));
+  const material = MATERIALS.find((m) => new RegExp(`\\b${m.replace(/[-\s]/g, "[-\\s]")}\\b`, "i").test(low));
+
+  const isMen = /\b(men|man|mens|men's|male|gents)\b/i.test(low);
+  const isWomen = /\b(women|woman|womens|women's|female|ladies)\b/i.test(low);
+  const isKids = /\b(kids?|child(?:ren)?|baby|babies|infant|toddler|boys?|girls?)\b/i.test(low);
+  const audience = isMen && isWomen
+    ? "men and women"
+    : isMen ? "men"
+    : isWomen ? "women"
+    : isKids ? "kids"
+    : /\bunisex\b/i.test(low) ? "unisex users"
+    : undefined;
+
+  const attributes: string[] = [];
+  for (const kw of ATTRIBUTE_KEYWORDS) {
+    if (new RegExp(`\\b${kw.replace(/[-\s]/g, "[-\\s]?")}\\b`, "i").test(low)) {
+      // Normalize wording
+      const norm = kw
+        .replace(/noise[- ]cancel(l?)ing/i, "noise cancellation")
+        .replace(/water[- ]?resistant/i, "water resistance")
+        .replace(/leak[- ]?proof/i, "leak resistance")
+        .replace(/non[- ]?stick/i, "non-stick");
+      if (!attributes.includes(norm)) attributes.push(norm);
+    }
+  }
+
+  const pt = PRODUCT_TYPES.find((p) => p.match.test(low));
+  const productType = pt?.type ?? (category ? category.toLowerCase() : "product");
+  const productNoun = pt?.noun ?? "product";
+  const useCases = pt?.useCases ?? [];
+
+  return {
+    cleanTitle: t,
+    productType,
+    productNoun,
+    capacity,
+    size,
+    pack,
+    color,
+    material,
+    audience,
+    attributes,
+    useCases,
+  };
+}
+
+function joinList(items: string[]): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
 export function generateSeoContent(
   title: string,
   category: string,
@@ -405,28 +588,132 @@ export function generateSeoContent(
   const seed = hashSeed(`${title}|${category}`);
   const r = rng(seed);
   const t = toTitleWords(title);
+  const facts = analyzeTitle(title, category);
+
+  // Build a bank of product-specific sentences derived from facts. These are
+  // *only* included when the underlying fact actually exists in the title,
+  // which is what keeps content accurate and non-generic.
+  const specificFeatures: string[] = [];
+  const specificBenefits: string[] = [];
+  const specificTips: string[] = [];
+  const specificFaqs: { q: string; a: string }[] = [];
+
+  if (facts.capacity) {
+    specificFeatures.push(`${facts.capacity} capacity — sized for ${facts.useCases[0] ?? "everyday use"}`);
+    specificBenefits.push(`The ${facts.capacity} size hits a practical balance between portability and how much it can hold.`);
+    specificTips.push(`Confirm the ${facts.capacity} capacity fits what you plan to carry before ordering.`);
+    specificFaqs.push({
+      q: `What is the capacity of this ${facts.productNoun}?`,
+      a: `Based on the title, this ${facts.productNoun} offers a ${facts.capacity} capacity, which suits ${facts.useCases[0] ?? "typical daily use"}.`,
+    });
+  }
+  if (facts.size) {
+    specificFeatures.push(`${facts.size} size, easy to handle and store`);
+    specificTips.push(`Measure the space you plan to use it in against the ${facts.size} dimension.`);
+  }
+  if (facts.pack) {
+    specificFeatures.push(`${facts.pack} — more value per order`);
+    specificBenefits.push(`Coming as a ${facts.pack.toLowerCase()} makes it easier to share, rotate, or gift.`);
+  }
+  if (facts.color) {
+    specificFeatures.push(`Available in ${facts.color} — a shade that pairs with most existing gear`);
+  }
+  if (facts.material) {
+    specificFeatures.push(`Built using ${facts.material}, chosen for regular use`);
+    specificBenefits.push(`The ${facts.material} construction is a step up from throwaway alternatives.`);
+    specificFaqs.push({
+      q: `What material is this ${facts.productNoun} made of?`,
+      a: `The title indicates ${facts.material} construction, which is generally chosen for durability and everyday use.`,
+    });
+  }
+  if (facts.audience) {
+    specificFeatures.push(`Designed for ${facts.audience} — inclusive styling for shared use`);
+  }
+  for (const a of facts.attributes.slice(0, 4)) {
+    specificFeatures.push(`${capitalize(a)} — a genuinely useful trait for this kind of product`);
+  }
+
+  // Attribute-specific benefits & FAQs for common product cues.
+  if (/insulated|thermal|vacuum|double[- ]?wall|hot and cold|hot & cold/i.test(facts.attributes.join(" "))) {
+    specificBenefits.push(`Thermal insulation helps keep contents warm or cool through the day, which is the main reason people buy this kind of ${facts.productNoun}.`);
+    specificFaqs.push({
+      q: `How long does it keep food or drinks hot or cold?`,
+      a: `Insulated ${facts.productNoun}s typically hold temperature for several hours. Exact retention varies by brand — check the seller's stated hot/cold duration on the listing.`,
+    });
+  }
+  if (/leak/i.test(facts.attributes.join(" "))) {
+    specificBenefits.push(`Leak resistance keeps the inside of your bag safe from spills during commutes.`);
+  }
+  if (/wireless|bluetooth/i.test(facts.attributes.join(" "))) {
+    specificBenefits.push(`Going wireless removes cable clutter and makes it easier to grab and go.`);
+  }
+  if (/rechargeable/i.test(facts.attributes.join(" "))) {
+    specificTips.push(`Charge it fully before first use for the best initial battery cycle.`);
+  }
+  if (/portable|lightweight|compact|foldable/i.test(facts.attributes.join(" "))) {
+    specificBenefits.push(`The compact, portable form factor makes it easy to slip into a bag or a small drawer.`);
+  }
+  if (/waterproof|water\s*resistance/i.test(facts.attributes.join(" "))) {
+    specificFaqs.push({
+      q: `Can it handle rain or splashes?`,
+      a: `Water resistance is called out in the title, so light rain and accidental splashes are generally fine. Avoid full submersion unless the listing explicitly says otherwise.`,
+    });
+  }
+
+  // Merge product-specific content with the category vocab, prioritizing
+  // specifics. This guarantees the output actually references the title.
+  const mergedFeatures = dedupe([...specificFeatures, ...v.featurePool]);
+  const mergedBenefits = dedupe([...specificBenefits, ...v.benefitPool]);
+  const mergedTips = dedupe([...specificTips, ...v.tipPool]);
+  const mergedFaqs = dedupeFaqs([...specificFaqs, ...v.faqPool]);
 
   const adj = pick(r, v.adjectives);
-  const useCase = pick(r, v.useCases);
+  const useCase = facts.useCases[0] ?? pick(r, v.useCases);
+  const useCase2 = facts.useCases[1] ?? pick(r, v.useCases);
   const audience = pick(r, v.audiences);
-  const audience2 = pick(r, v.audiences);
+  const audience2 = facts.audience ?? pick(r, v.audiences);
 
-  const features = shuffle(r, v.featurePool).slice(0, 5 + Math.floor(r() * 3));
-  const benefits = shuffle(r, v.benefitPool).slice(0, 3 + Math.floor(r() * 2));
-  const tips = shuffle(r, v.tipPool).slice(0, 3 + Math.floor(r() * 2));
-  const faqs = shuffle(r, v.faqPool).slice(0, 3);
+  // Keep specifics up front (in stable order) then top up with shuffled generic
+  // ones so the length still lands in the 5-7 / 3-5 targets.
+  const targetFeatureCount = 5 + Math.floor(r() * 3);
+  const targetBenefitCount = 3 + Math.floor(r() * 2);
+  const targetTipCount = 3 + Math.floor(r() * 2);
+  const features = topUp(mergedFeatures, specificFeatures, r, targetFeatureCount);
+  const benefits = topUp(mergedBenefits, specificBenefits, r, targetBenefitCount);
+  const tips = topUp(mergedTips, specificTips, r, targetTipCount);
+  const faqs = topUpFaqs(mergedFaqs, specificFaqs, r, 3);
+
+  // Build a product-specific summary line used inside the description.
+  const detailBits: string[] = [];
+  if (facts.capacity) detailBits.push(`${facts.capacity} capacity`);
+  if (facts.size) detailBits.push(`${facts.size} size`);
+  if (facts.material) detailBits.push(`${facts.material} build`);
+  if (facts.color) detailBits.push(`${facts.color} finish`);
+  if (facts.pack) detailBits.push(facts.pack.toLowerCase());
+  if (facts.audience) detailBits.push(`suited for ${facts.audience}`);
+  const detailSentence =
+    detailBits.length > 0
+      ? `Going by the title, key specifics include ${joinList(detailBits)}.`
+      : "";
+  const attrSentence =
+    facts.attributes.length > 0
+      ? `It's described as ${joinList(facts.attributes.slice(0, 4))}, which shapes how it fits into everyday use.`
+      : "";
+  const usageSentence = facts.useCases.length
+    ? `Common day-to-day scenarios include ${joinList(facts.useCases.slice(0, 3))}.`
+    : "";
 
   // Build a 150-250 word description using multiple mixed sentence templates.
   const openers = [
-    `The ${t} is a ${adj} pick for shoppers who want a dependable option without overspending.`,
-    `Looking for a ${adj} ${category.toLowerCase()} option? The ${t} is worth a serious look right now.`,
-    `If you've been hunting for a ${adj} upgrade, the ${t} lines up neatly with what most buyers actually need.`,
-    `The ${t} focuses on the essentials — ${adj} build, sensible design, and a price that finally makes it easy to say yes.`,
+    `The ${t} is a ${facts.productType} aimed at buyers who want a ${adj} option without overspending.`,
+    `As a ${facts.productType}, the ${t} lines up neatly with what most buyers actually shop for in this space.`,
+    `If you've been comparing ${facts.productType} options, the ${t} is worth a serious look right now.`,
+    `The ${t} focuses on the essentials most people care about in a ${facts.productType} — practical design, sensible specs, and a fair price.`,
   ];
   const middles = [
-    `It's built with ${useCase} in mind, so it feels at home in real routines instead of only looking good in photos.`,
-    `Whether you're using it for ${useCase} or occasional needs, it holds up without demanding a lot of attention.`,
-    `Designed around ${useCase}, it keeps the experience simple — set it up, use it, forget about it.`,
+    `It's built with ${useCase} in mind, so it fits into real routines instead of only looking good in photos.`,
+    `Whether you're using it for ${useCase} or ${useCase2}, it holds up without demanding a lot of attention.`,
+    `Designed around ${useCase}, it keeps the experience simple — pick it up, use it, and move on.`,
   ];
   const priceLine =
     discountPct >= 65
@@ -435,24 +722,34 @@ export function generateSeoContent(
         ? `With about ${discountPct}% off right now, the pricing lands in a genuinely attractive zone versus the usual MRP.`
         : `Even at a modest discount, the current price is worth checking against your usual online source before you decide.`;
   const closers = [
-    `Overall, the ${t} is a sensible pick for ${audience} and ${audience2} who want to buy once and move on.`,
-    `In short, it's a straightforward recommendation for ${audience} — and a safe gift idea for ${audience2}.`,
+    `Overall, the ${t} is a sensible ${facts.productNoun} for ${audience2 || audience} who want to buy once and move on.`,
+    `In short, it's a straightforward ${facts.productNoun} recommendation for ${audience2 || audience}.`,
     `Bottom line: if you're a fit for the description above, the ${t} deserves a spot on your shortlist.`,
   ];
 
   const description = [
     pick(r, openers),
+    detailSentence,
+    attrSentence,
     pick(r, middles),
+    usageSentence,
     priceLine,
-    `On the practical side, expect ${features[0].toLowerCase()} and ${features[1].toLowerCase()} — the kind of details that quietly matter every day.`,
+    `On the practical side, expect ${features[0].toLowerCase()}${features[1] ? ` and ${features[1].toLowerCase()}` : ""} — the kind of details that quietly matter every day.`,
     `It also earns points for ${benefits[0].toLowerCase()}, which is exactly why buyers keep coming back to picks like this one.`,
     pick(r, closers),
-  ].join(" ");
+  ].filter(Boolean).join(" ");
 
-  const whoShouldBuy = `The ${t} is a strong fit for ${audience} looking for a ${adj} option, and equally suited to ${audience2} who prefer buys that quietly work day after day. It's especially worth a look if ${useCase} is a regular part of your routine.`;
+  const whoShouldBuy = `The ${t} is a strong fit for ${facts.audience ?? audience} looking for a ${adj} ${facts.productType}, and equally suited to ${audience2 || audience} who prefer buys that quietly work day after day. It's especially worth a look if ${useCase} is a regular part of your routine.`;
 
   // Meta description: 150-160 chars, unique per title
-  const metaBase = `Grab the ${t} at ${discountPct}% off on CheckThePrice — features, buying tips, FAQs and price-drop alerts for ${audience.toLowerCase()}.`;
+  const metaBits = [
+    facts.capacity ? facts.capacity : "",
+    facts.color ? facts.color : "",
+    facts.material ? facts.material : "",
+  ].filter(Boolean).join(" ");
+  const metaBase = metaBits
+    ? `${t} at ${discountPct}% off — ${metaBits} ${facts.productType}. Features, FAQs and price-drop alerts on CheckThePrice.`
+    : `${t} at ${discountPct}% off — features, buying tips, FAQs and price-drop alerts for this ${facts.productType} on CheckThePrice.`;
   const metaDescription = clampMeta(metaBase, t, discountPct, audience);
 
   return {
@@ -464,6 +761,50 @@ export function generateSeoContent(
     buyingTips: tips,
     faqs,
   };
+}
+
+function capitalize(s: string): string {
+  return s.length ? s[0].toUpperCase() + s.slice(1) : s;
+}
+function dedupe(arr: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const s of arr) {
+    const k = s.toLowerCase().trim();
+    if (!seen.has(k)) { seen.add(k); out.push(s); }
+  }
+  return out;
+}
+function dedupeFaqs(arr: { q: string; a: string }[]): { q: string; a: string }[] {
+  const seen = new Set<string>();
+  const out: { q: string; a: string }[] = [];
+  for (const f of arr) {
+    const k = f.q.toLowerCase().trim();
+    if (!seen.has(k)) { seen.add(k); out.push(f); }
+  }
+  return out;
+}
+function topUp(
+  merged: string[],
+  specific: string[],
+  r: () => number,
+  target: number,
+): string[] {
+  const spec = specific.slice(0, target);
+  const remaining = merged.filter((x) => !spec.includes(x));
+  const shuffled = shuffle(r, remaining);
+  return dedupe([...spec, ...shuffled]).slice(0, target);
+}
+function topUpFaqs(
+  merged: { q: string; a: string }[],
+  specific: { q: string; a: string }[],
+  r: () => number,
+  target: number,
+): { q: string; a: string }[] {
+  const spec = specific.slice(0, target);
+  const remaining = merged.filter((x) => !spec.some((s) => s.q === x.q));
+  const shuffled = shuffle(r, remaining);
+  return dedupeFaqs([...spec, ...shuffled]).slice(0, target);
 }
 
 function clampMeta(s: string, t: string, d: number, audience: string): string {
@@ -486,7 +827,8 @@ function clampMeta(s: string, t: string, d: number, audience: string): string {
 const memCache = new Map<string, DealSeoContent>();
 
 function cacheKey(title: string, category: string): string {
-  return `ctp:seo:${hashSeed(`${title}|${category}`).toString(36)}`;
+  // v2 bumps cache so older, less-specific content regenerates with the new analyzer.
+  return `ctp:seo:v2:${hashSeed(`${title}|${category}`).toString(36)}`;
 }
 
 export function getSeoContent(
