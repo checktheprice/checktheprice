@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://checktheprice.lovable.app/sitemap.xml
+Sitemap: https://checktheprice.vercel.app/sitemap.xml
