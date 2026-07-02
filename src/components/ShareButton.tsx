@@ -6,7 +6,7 @@ interface Props {
   deal: Deal;
 }
 
-const SITE_URL = "https://checktheprice.lovable.app";
+const SITE_URL = "https://checktheprice.vercel.app";
 
 export function ShareButton({ deal }: Props) {
   const [open, setOpen] = useState(false);
