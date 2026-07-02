@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { fetchDeals, slugifyTitle } from "@/lib/deals";
 
-const BASE_URL = "https://checktheprice.lovable.app";
+const BASE_URL = "https://checktheprice.vercel.app";
 
 interface SitemapEntry {
   path: string;
