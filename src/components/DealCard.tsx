@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, Flame, TrendingDown } from "lucide-react";
 import { ShareButton } from "@/components/ShareButton";
 import { useNavigate } from "@tanstack/react-router";
+import { RelativeTime } from "@/components/RelativeTime";
 import {
   type Deal,
   calcDiscount,
@@ -83,6 +84,10 @@ export function DealCard({ deal, onAlert }: Props) {
           >
             {deal.category}
           </Badge>
+          <RelativeTime
+            timestamp={deal.updatedAt}
+            className="mt-1 block text-[11px] text-muted-foreground"
+          />
         </div>
 
         {/* Prices */}

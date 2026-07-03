@@ -10,6 +10,7 @@ export interface Deal {
   couponCode?: string;
   hotDeal?: boolean;
   addedAt?: number; // timestamp for sorting "Price Drops"
+  updatedAt?: number; // parsed from Google Sheet "updated" column
 }
 
 // 👉 REPLACE WITH YOUR GOOGLE SHEET ID
@@ -169,6 +170,8 @@ function parseGviz(text: string): Deal[] {
       const hot = String(get("hotdeal") || "")
         .toLowerCase()
         .trim();
+      const updatedRaw = get("updated", "updatedat", "lastupdated", "updateddate");
+      const updatedAt = parseSheetDate(updatedRaw);
       const rawLink = String(
         get("affiliatelink", "affiliate_link", "link", "url", "buylink", "producturl") || "",
       ).trim();
@@ -185,9 +188,39 @@ function parseGviz(text: string): Deal[] {
         couponCode: String(get("couponcode") || "").trim() || undefined,
         hotDeal: hot === "true" || hot === "yes" || hot === "1",
         addedAt: Date.now() - i * 60_000,
+        updatedAt,
       };
     })
     .filter((d: Deal) => d.title && d.mrp > 0 && d.onlinePrice > 0);
+}
+
+function parseSheetDate(v: unknown): number | undefined {
+  if (v == null || v === "") return undefined;
+  // gviz date cells come as strings like "Date(2024,5,12,10,30,0)"
+  if (typeof v === "string") {
+    const m = v.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/);
+    if (m) {
+      const [, y, mo, d, h, mi, s] = m;
+      return new Date(
+        Number(y),
+        Number(mo),
+        Number(d),
+        Number(h ?? 0),
+        Number(mi ?? 0),
+        Number(s ?? 0),
+      ).getTime();
+    }
+    const t = Date.parse(v);
+    if (!Number.isNaN(t)) return t;
+  }
+  if (typeof v === "number") {
+    // Google Sheets serial number (days since 1899-12-30)
+    if (v > 20000 && v < 80000) {
+      return Math.round((v - 25569) * 86400 * 1000);
+    }
+    return v;
+  }
+  return undefined;
 }
 
 export function normalizeUrl(url: string): string {
