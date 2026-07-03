@@ -108,7 +108,7 @@ function Index() {
 
   const filtered = useMemo(() => {
     if (!deals) return [];
-    return deals.filter((d) => {
+    const list = deals.filter((d) => {
       const matchSearch = d.title
         .toLowerCase()
         .includes(search.toLowerCase());
@@ -119,6 +119,14 @@ function Index() {
         !discountRange ||
         inDiscountRange(calcDiscount(d.mrp, d.onlinePrice), discountRange);
       return matchSearch && matchCat && matchHot && matchDiscount;
+    });
+    return [...list].sort((a, b) => {
+      const au = a.updatedAt;
+      const bu = b.updatedAt;
+      if (au && bu) return bu - au;
+      if (au && !bu) return -1;
+      if (!au && bu) return 1;
+      return 0;
     });
   }, [deals, search, category, filter, discountRange]);
 
