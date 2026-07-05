@@ -11,20 +11,23 @@ interface SitemapEntry {
   lastmod: string;
 }
 
+// Real last-modified dates for static pages. Update when the page content changes.
+const STATIC_PAGES: SitemapEntry[] = [
+  { path: "/", priority: "1.0", changefreq: "daily", lastmod: "2025-06-20" },
+  { path: "/about", priority: "0.7", changefreq: "monthly", lastmod: "2025-04-15" },
+  { path: "/contact", priority: "0.6", changefreq: "monthly", lastmod: "2025-04-15" },
+  { path: "/disclaimer", priority: "0.4", changefreq: "yearly", lastmod: "2025-02-10" },
+  { path: "/affiliate-disclosure", priority: "0.5", changefreq: "yearly", lastmod: "2025-02-10" },
+  { path: "/privacy", priority: "0.5", changefreq: "yearly", lastmod: "2025-02-10" },
+  { path: "/terms", priority: "0.5", changefreq: "yearly", lastmod: "2025-02-10" },
+];
+
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
         const today = new Date().toISOString().split("T")[0];
-        const entries: SitemapEntry[] = [
-          { path: "/", priority: "1.0", changefreq: "daily", lastmod: today },
-          { path: "/about", priority: "0.7", changefreq: "monthly", lastmod: today },
-          { path: "/contact", priority: "0.6", changefreq: "monthly", lastmod: today },
-          { path: "/disclaimer", priority: "0.4", changefreq: "yearly", lastmod: today },
-          { path: "/affiliate-disclosure", priority: "0.5", changefreq: "yearly", lastmod: today },
-          { path: "/privacy", priority: "0.5", changefreq: "yearly", lastmod: today },
-          { path: "/terms", priority: "0.5", changefreq: "yearly", lastmod: today },
-        ];
+        const entries: SitemapEntry[] = [...STATIC_PAGES];
 
         try {
           const { deals } = await fetchDeals();
@@ -72,7 +75,6 @@ export const Route = createFileRoute("/sitemap.xml")({
           headers: {
             "Content-Type": "application/xml; charset=utf-8",
             "Cache-Control": "public, max-age=3600, s-maxage=3600",
-            "X-Robots-Tag": "noindex",
           },
         });
       },
