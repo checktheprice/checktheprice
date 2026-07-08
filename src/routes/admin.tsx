@@ -156,7 +156,7 @@ function AdminPage() {
           affiliate_link: "",
           image: scraped.image,
           Duplicate: "",
-          updated: new Date().toISOString(),
+          updated: formatISTTimestamp(new Date()),
         },
       };
       // Use text/plain to avoid CORS preflight on Apps Script Web Apps.
