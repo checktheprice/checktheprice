@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
+import { buildAmazonAffiliateLink } from "@/lib/affiliate";
+import { calcDiscount } from "@/lib/deals";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -57,6 +61,41 @@ function formatISTTimestamp(d: Date): string {
 }
 
 function AdminPage() {
+  const navigate = useNavigate();
+  const [authState, setAuthState] = useState<"checking" | "ok" | "denied">("checking");
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!mounted) return;
+      if (!userData.user) {
+        navigate({ to: "/auth" });
+        return;
+      }
+      const { data: isAdmin } = await supabase.rpc("has_role", {
+        _user_id: userData.user.id,
+        _role: "admin",
+      });
+      if (!mounted) return;
+      if (!isAdmin) {
+        setAuthState("denied");
+        return;
+      }
+      setAdminEmail(userData.user.email ?? null);
+      setAuthState("ok");
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [navigate]);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth" });
+  }
+
   const [config, setConfig] = useState<Config>({
     firecrawlKey: "",
     spreadsheetId: "",
@@ -67,6 +106,7 @@ function AdminPage() {
   const [scraped, setScraped] = useState<Scraped>(emptyScraped);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(
     null,
   );
@@ -204,16 +244,113 @@ function AdminPage() {
     }
   }
 
+  async function handleSaveToWebsite() {
+    setMsg(null);
+    if (!scraped.title || !scraped.price || !scraped.mrp) {
+      setMsg({
+        type: "err",
+        text: "Nothing to publish — fetch a product first and confirm price + MRP.",
+      });
+      return;
+    }
+    const priceNum = Number(String(scraped.price).replace(/[^\d.]/g, ""));
+    const mrpNum = Number(String(scraped.mrp).replace(/[^\d.]/g, ""));
+    if (!priceNum || !mrpNum) {
+      setMsg({ type: "err", text: "Price and MRP must be valid numbers." });
+      return;
+    }
+    if (!url.trim()) {
+      setMsg({ type: "err", text: "Amazon product URL is required." });
+      return;
+    }
+    setPublishing(true);
+    try {
+      const affiliate = buildAmazonAffiliateLink(url.trim());
+      const discount = calcDiscount(mrpNum, priceNum);
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await supabase.from("deals").insert({
+        title: scraped.title,
+        image: scraped.image || null,
+        category: scraped.category || "General",
+        price: priceNum,
+        mrp: mrpNum,
+        discount_percentage: discount,
+        source: "Amazon",
+        standard_link: url.trim(),
+        affiliate_link: affiliate,
+        coupon_code: null,
+        hot_deal: discount > 65,
+        is_active: true,
+        created_by: userData.user?.id ?? null,
+      });
+      if (error) throw error;
+      setMsg({
+        type: "ok",
+        text: "Published to website ✅ (live on the homepage now)",
+      });
+      setUrl("");
+      setScraped(emptyScraped);
+    } catch (e) {
+      setMsg({
+        type: "err",
+        text: `Publish failed: ${(e as Error).message}`,
+      });
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  if (authState === "checking") {
+    return (
+      <main className="mx-auto max-w-md px-4 py-16 text-center text-sm text-muted-foreground">
+        Checking access…
+      </main>
+    );
+  }
+  if (authState === "denied") {
+    return (
+      <main className="mx-auto max-w-md px-4 py-16 text-center">
+        <h1 className="text-xl font-bold text-foreground">Access denied</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Your account isn't an administrator.
+        </p>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+        >
+          Sign out
+        </button>
+      </main>
+    );
+  }
+
   const inputCls =
     "w-full rounded-md border border-input bg-background px-3 py-2 text-base text-foreground outline-none focus:ring-2 focus:ring-primary";
   const labelCls = "text-xs font-medium text-muted-foreground";
 
   return (
     <main className="mx-auto max-w-md px-4 py-6 pb-24">
-      <h1 className="text-2xl font-bold text-foreground">Mobile Admin</h1>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Scrape an Amazon product and append it to Sheet 2. Does not touch Sheet 1.
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Mobile Admin</h1>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Scrape an Amazon product, then publish to the website or append to Sheet 2.
+          </p>
+          {adminEmail && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Signed in as {adminEmail}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="shrink-0 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted"
+        >
+          Sign out
+        </button>
+      </div>
 
       <div className="mt-4 rounded-lg border border-border bg-card p-3">
         <button
@@ -379,6 +516,19 @@ function AdminPage() {
         >
           {saving ? "Saving…" : "Save to Google Sheet"}
         </button>
+
+        <button
+          type="button"
+          onClick={handleSaveToWebsite}
+          disabled={publishing}
+          className="w-full rounded-md bg-[#ff9900] px-4 py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+        >
+          {publishing ? "Publishing…" : "Save to Website (Publish Live)"}
+        </button>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Publishes instantly to the site database with your Amazon affiliate
+          tag <code>pavani15-21</code>. Independent of Google Sheets.
+        </p>
       </div>
     </main>
   );

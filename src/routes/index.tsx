@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DealCard } from "@/components/DealCard";
 import { PriceAlertModal } from "@/components/PriceAlertModal";
 import { fetchDeals, calcDiscount, type Deal } from "@/lib/deals";
+import { fetchDbDeals } from "@/lib/db-deals";
 import { TrustSection } from "@/components/TrustSection";
 import { FAQ, faqJsonLd } from "@/components/FAQ";
 import { LastUpdated } from "@/components/LastUpdated";
@@ -23,6 +24,14 @@ const dealsQueryOptions = queryOptions({
   queryKey: ["deals"],
   queryFn: fetchDeals,
   staleTime: 5 * 60_000,
+  gcTime: 30 * 60_000,
+  retry: 1,
+});
+
+const dbDealsQueryOptions = queryOptions({
+  queryKey: ["deals", "db"],
+  queryFn: fetchDbDeals,
+  staleTime: 60_000,
   gcTime: 30 * 60_000,
   retry: 1,
 });
@@ -43,6 +52,11 @@ export const Route = createFileRoute("/")({
       await context.queryClient.ensureQueryData(dealsQueryOptions);
     } catch (e) {
       console.error("[deals] loader prefetch failed", e);
+    }
+    try {
+      await context.queryClient.ensureQueryData(dbDealsQueryOptions);
+    } catch (e) {
+      console.error("[db-deals] loader prefetch failed", e);
     }
   },
   head: () => ({
@@ -91,7 +105,16 @@ function Index() {
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
-  const deals = data?.deals ?? [];
+  const { data: dbDeals } = useQuery({
+    ...dbDealsQueryOptions,
+    refetchOnWindowFocus: false,
+  });
+  const deals = useMemo<Deal[]>(() => {
+    const sheetDeals = data?.deals ?? [];
+    const website = dbDeals ?? [];
+    // DB deals first (they're admin-curated and fresh), then sheet deals.
+    return [...website, ...sheetDeals];
+  }, [data, dbDeals]);
 
   const { discount: discountRange } = Route.useSearch();
 
