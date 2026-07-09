@@ -347,13 +347,15 @@ function AdminPage() {
             ["price", "Price"],
             ["mrp", "MRP"],
             ["image", "Image URL"],
+            ["updated", "Updated"],
           ] as [keyof Scraped, string][]
         ).map(([k, label]) => (
           <div key={k}>
             <label className={labelCls}>{label}</label>
             <input
-              className={inputCls}
+              className={`${inputCls} ${k === "updated" ? "bg-muted/60 text-muted-foreground" : ""}`}
               value={scraped[k]}
+              readOnly={k === "updated"}
               onChange={(e) =>
                 setScraped({ ...scraped, [k]: e.target.value })
               }
