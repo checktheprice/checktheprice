@@ -516,6 +516,19 @@ function AdminPage() {
         >
           {saving ? "Saving…" : "Save to Google Sheet"}
         </button>
+
+        <button
+          type="button"
+          onClick={handleSaveToWebsite}
+          disabled={publishing}
+          className="w-full rounded-md bg-[#ff9900] px-4 py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+        >
+          {publishing ? "Publishing…" : "Save to Website (Publish Live)"}
+        </button>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Publishes instantly to the site database with your Amazon affiliate
+          tag <code>pavani15-21</code>. Independent of Google Sheets.
+        </p>
       </div>
     </main>
   );
