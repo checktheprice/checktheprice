@@ -133,6 +133,7 @@ function AdminPage() {
         price: j.price != null ? String(j.price) : "",
         mrp: j.mrp != null ? String(j.mrp) : "",
         image: String(j.image ?? ""),
+        updated: formatISTTimestamp(new Date()),
       });
       setMsg({ type: "ok", text: "Fetched. Review & edit, then save." });
     } catch (e) {
