@@ -18,6 +18,7 @@ type Scraped = {
   price: string;
   mrp: string;
   image: string;
+  updated: string;
 };
 
 const LS_KEY = "ctp_admin_config_v1";
@@ -35,6 +36,7 @@ const emptyScraped: Scraped = {
   price: "",
   mrp: "",
   image: "",
+  updated: "",
 };
 
 function formatISTTimestamp(d: Date): string {
@@ -131,6 +133,7 @@ function AdminPage() {
         price: j.price != null ? String(j.price) : "",
         mrp: j.mrp != null ? String(j.mrp) : "",
         image: String(j.image ?? ""),
+        updated: formatISTTimestamp(new Date()),
       });
       setMsg({ type: "ok", text: "Fetched. Review & edit, then save." });
     } catch (e) {
@@ -173,7 +176,7 @@ function AdminPage() {
           affiliate_link: "",
           image: scraped.image,
           Duplicate: "",
-          updated: formatISTTimestamp(new Date()),
+          updated: scraped.updated,
         },
       };
       // Use text/plain to avoid CORS preflight on Apps Script Web Apps.
@@ -344,13 +347,15 @@ function AdminPage() {
             ["price", "Price"],
             ["mrp", "MRP"],
             ["image", "Image URL"],
+            ["updated", "Updated"],
           ] as [keyof Scraped, string][]
         ).map(([k, label]) => (
           <div key={k}>
             <label className={labelCls}>{label}</label>
             <input
-              className={inputCls}
+              className={`${inputCls} ${k === "updated" ? "bg-muted/60 text-muted-foreground" : ""}`}
               value={scraped[k]}
+              readOnly={k === "updated"}
               onChange={(e) =>
                 setScraped({ ...scraped, [k]: e.target.value })
               }
