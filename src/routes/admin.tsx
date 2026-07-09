@@ -18,6 +18,7 @@ type Scraped = {
   price: string;
   mrp: string;
   image: string;
+  updated: string;
 };
 
 const LS_KEY = "ctp_admin_config_v1";
@@ -35,6 +36,7 @@ const emptyScraped: Scraped = {
   price: "",
   mrp: "",
   image: "",
+  updated: "",
 };
 
 function formatISTTimestamp(d: Date): string {
