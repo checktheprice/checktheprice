@@ -159,7 +159,7 @@ function AdminPage() {
         }),
       });
       const body = await res.json().catch(() => null);
-      console.log("Firecrawl Response:", body);
+      alert(JSON.stringify(body));
       if (!res.ok) {
         throw new Error(
           (body && (body.error || body.message)) ||
