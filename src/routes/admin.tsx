@@ -151,7 +151,7 @@ function AdminPage() {
             {
               type: "json",
               prompt:
-                "Extract the real Amazon product details from this page. Do not use examples or placeholder values.
+                `Extract the real Amazon product details from this page. Do not use examples or placeholder values.
 
 Return ONLY JSON:
 {
@@ -162,7 +162,7 @@ Return ONLY JSON:
 "image": "actual main product image URL"
 }
 
-Use the page content, OpenGraph metadata, or structured data. Never return Example Product Title or example.com.",
+Use the page content, OpenGraph metadata, or structured data. Never return Example Product Title or example.com.`,
             },
           ],
           onlyMainContent: true,
