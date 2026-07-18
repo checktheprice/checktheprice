@@ -177,7 +177,7 @@ function AdminPage() {
         image: String(j.image ?? ""),
         updated: formatISTTimestamp(new Date()),
       });
-      setMsg({ type: "ok", text: "Fetched. Review & edit, then save." });
+      setMsg({ type: "ok", text: JSON.stringify(body).slice(0,500) });
     } catch (e) {
       setMsg({ type: "err", text: `Fetch failed: ${(e as Error).message}` });
     } finally {
