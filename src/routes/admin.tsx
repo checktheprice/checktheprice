@@ -151,18 +151,20 @@ function AdminPage() {
             {
               type: "json",
               prompt:
-                `Extract the real Amazon product details from this page. Do not use examples or placeholder values.
+ `
+Find the real product information from this Amazon page.
 
-Return ONLY JSON:
+Return JSON only:
 {
-"title": "actual product title from Amazon",
-"category": "actual Amazon category/breadcrumb",
-"price": actual current selling price as number,
-"mrp": actual MRP/list price as number,
-"image": "actual main product image URL"
+"title": "",
+"category": "",
+"price": 0,
+"mrp": 0,
+"image": ""
 }
 
-Use the page content, OpenGraph metadata, or structured data. Never return Example Product Title or example.com.`,
+Fill these fields with the actual values from the page. Do not copy the placeholder values.
+`,
             },
           ],
           onlyMainContent: true,
