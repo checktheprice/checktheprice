@@ -155,6 +155,7 @@ function AdminPage() {
             },
           ],
           onlyMainContent: true,
+          proxy: "auto",
         }),
       });
       const body = await res.json().catch(() => null);
