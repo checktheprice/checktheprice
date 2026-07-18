@@ -159,7 +159,7 @@ function AdminPage() {
         }),
       });
       const body = await res.json().catch(() => null);
-      alert(JSON.stringify(body));
+      setMsg({ type: "ok", text: JSON.stringify(body).slice(0,500) });
       if (!res.ok) {
         throw new Error(
           (body && (body.error || body.message)) ||
