@@ -168,7 +168,7 @@ Fill these fields with the actual values from the page. Do not copy the placehol
             },
           ],
           onlyMainContent: true,
-          proxy: "stealth",
+          proxy: "enhanced",
         }),
       });
       const body = await res.json().catch(() => null);
