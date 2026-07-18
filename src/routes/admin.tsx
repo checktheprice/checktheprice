@@ -151,11 +151,22 @@ function AdminPage() {
             {
               type: "json",
               prompt:
-                "Extract product details from this Amazon page. Return JSON with title, category, price, mrp, and image. Use visible product information and page metadata. Do not leave fields empty if the information exists.",
+                "Extract the real Amazon product details from this page. Do not use examples or placeholder values.
+
+Return ONLY JSON:
+{
+"title": "actual product title from Amazon",
+"category": "actual Amazon category/breadcrumb",
+"price": actual current selling price as number,
+"mrp": actual MRP/list price as number,
+"image": "actual main product image URL"
+}
+
+Use the page content, OpenGraph metadata, or structured data. Never return Example Product Title or example.com.",
             },
           ],
           onlyMainContent: true,
-          proxy: "enhanced",
+          proxy: "stealth",
         }),
       });
       const body = await res.json().catch(() => null);
