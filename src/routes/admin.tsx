@@ -151,7 +151,7 @@ function AdminPage() {
             {
               type: "json",
               prompt:
-                "Extract Amazon product info. Return keys: title (string), category (string, best breadcrumb category), price (number, current selling price in local currency, no symbols), mrp (number, original/list/MRP price, no symbols), image (string, absolute URL of main product image).",
+                "Extract product details from this Amazon page. Return JSON with title, category, price, mrp, and image. Use visible product information and page metadata. Do not leave fields empty if the information exists.",
             },
           ],
           onlyMainContent: true,
