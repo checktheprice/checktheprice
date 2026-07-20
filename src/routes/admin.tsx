@@ -147,32 +147,29 @@ function AdminPage() {
         },
         body: JSON.stringify({
           url: url.trim(),
+          location: {
+  country: "IN",
+},
+waitFor: 3000,
           formats: [
             {
               type: "json",
-              prompt:
- `
-Find the real product information from this Amazon page.
-
-Return JSON only:
-{
-"title": "",
-"category": "",
-"price": 0,
-"mrp": 0,
-"image": ""
-}
-
-Fill these fields with the actual values from the page. Do not copy the placeholder values.
-`,
-            },
+              prompt: "Extract Amazon product info. Return keys: title (string), category (string, best breadcrumb category), price (number, current selling price in local currency, no symbols), mrp (number, original/list/MRP price, no symbols), image (string, absolute URL of main product image).",
+      schema: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          category: { type: "string" },
+          price: { type: "number" },
+          mrp: { type: "number" },
+          image: { type: "string" },
+        },      },
           ],
           onlyMainContent: true,
           proxy: "enhanced",
         }),
       });
       const body = await res.json().catch(() => null);
-      setMsg({ type: "ok", text: JSON.stringify(body).slice(0,500) });
       if (!res.ok) {
         throw new Error(
           (body && (body.error || body.message)) ||
@@ -190,7 +187,7 @@ Fill these fields with the actual values from the page. Do not copy the placehol
         image: String(j.image ?? ""),
         updated: formatISTTimestamp(new Date()),
       });
-      setMsg({ type: "ok", text: JSON.stringify(body).slice(0,500) });
+      setMsg({ type: "ok", text: "Fetched. Review & edit, then save." });
     } catch (e) {
       setMsg({ type: "err", text: `Fetch failed: ${(e as Error).message}` });
     } finally {
