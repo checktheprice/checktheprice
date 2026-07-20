@@ -154,7 +154,7 @@ waitFor: 3000,
           formats: [
             {
               type: "json",
-              prompt: "Extract Amazon product info. Return keys: title (string), category (string, best breadcrumb category), price (number, current selling price in local currency, no symbols), mrp (number, original/list/MRP price, no symbols), image (string, absolute URL of main product image).",
+              prompt: "Extract Amazon product info.Return all text fields (title and category) in English only. Return keys: title (string), category (string, best breadcrumb category), price (number, current selling price in local currency, no symbols), mrp (number, original/list/MRP price, no symbols), image (string, absolute URL of main product image).",
       schema: {
         type: "object",
         properties: {
