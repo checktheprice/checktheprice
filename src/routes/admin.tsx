@@ -132,65 +132,33 @@ function AdminPage() {
       setMsg({ type: "err", text: "Paste an Amazon product URL first." });
       return;
     }
-    if (!config.firecrawlKey) {
-      setMsg({ type: "err", text: "Add your Firecrawl API key in Config." });
-      setShowConfig(true);
-      return;
-    }
     setLoading(true);
     try {
-      const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      const res = await fetch("/api/admin/fetch-details", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.firecrawlKey}`,
-        },
-        body: JSON.stringify({
-          url: url.trim(),
-          location: {
-  country: "IN",
-},
-waitFor: 3000,
-          formats: [
-            {
-              type: "json",
-              prompt: "Extract Amazon product info.Return all text fields (title and category) in English only. Return keys: title (string), category (string, best breadcrumb category), price (number, current selling price in local currency, no symbols), mrp (number, original/list/MRP price, no symbols), image (string, absolute URL of main product image).",
-      schema: {
-        type: "object",
-        properties: {
-          title: { type: "string" },
-          category: { type: "string" },
-          price: { type: "number" },
-          mrp: { type: "number" },
-          image: { type: "string" },
-        },  
-      },
-     },
-          ],
-          onlyMainContent: true,
-          proxy: "enhanced",
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
       });
-      const body = await res.json().catch(() => null);
+      const j = await res.json().catch(() => null);
       if (!res.ok) {
         throw new Error(
-          (body && (body.error || body.message)) ||
-            `Firecrawl HTTP ${res.status}`,
+          (j && (j.error || j.message)) || `Fetch details HTTP ${res.status}`,
         );
       }
-      const j =
-        body?.data?.json ?? body?.json ?? body?.data?.extract ?? body?.extract;
-      if (!j) throw new Error("Firecrawl returned no structured data.");
+      if (!j?.title || !j?.price || !j?.image) {
+        throw new Error("Fetched product details are missing title, price, or image.");
+      }
       setScraped({
         title: String(j.title ?? ""),
         category: String(j.category ?? ""),
         price: j.price != null ? String(j.price) : "",
         mrp: j.mrp != null ? String(j.mrp) : "",
         image: String(j.image ?? ""),
-        updated: formatISTTimestamp(new Date()),
+        updated: String(j.updated || formatISTTimestamp(new Date())),
       });
       setMsg({ type: "ok", text: "Fetched. Review & edit, then save." });
     } catch (e) {
+      setScraped(emptyScraped);
       setMsg({ type: "err", text: `Fetch failed: ${(e as Error).message}` });
     } finally {
       setLoading(false);
@@ -212,8 +180,8 @@ waitFor: 3000,
       setShowConfig(true);
       return;
     }
-    if (!scraped.title) {
-      setMsg({ type: "err", text: "Nothing to save — fetch a product first." });
+    if (!scraped.title || !scraped.price || !scraped.image) {
+      setMsg({ type: "err", text: "Nothing to save — fetch a product first and confirm title + price + image." });
       return;
     }
     setSaving(true);
@@ -260,10 +228,10 @@ waitFor: 3000,
 
   async function handleSaveToWebsite() {
     setMsg(null);
-    if (!scraped.title || !scraped.price || !scraped.mrp) {
+    if (!scraped.title || !scraped.price || !scraped.mrp || !scraped.image) {
       setMsg({
         type: "err",
-        text: "Nothing to publish — fetch a product first and confirm price + MRP.",
+        text: "Nothing to publish — fetch a product first and confirm title + price + MRP + image.",
       });
       return;
     }
