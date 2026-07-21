@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,11 +29,97 @@ type Scraped = {
 const LS_KEY = "ctp_admin_config_v1";
 
 type Config = {
-  firecrawlKey: string;
   spreadsheetId: string;
   sheetTab: string;
   appsScriptUrl: string;
 };
+
+const fetchProductDetails = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { url?: unknown })
+  .handler(async ({ data }) => {
+    const productUrl =
+      data && typeof data === "object" && "url" in data
+        ? String((data as { url?: unknown }).url ?? "").trim()
+        : "";
+
+    if (!productUrl) {
+      throw new Error("Amazon product URL is required.");
+    }
+
+    const apiKey = process.env.FIRECRAWL_API_KEY;
+    if (!apiKey) {
+      throw new Error("FIRECRAWL_API_KEY is not configured on the server.");
+    }
+
+    console.log("PROMETHEUS API CALLED");
+    const res = await fetch(
+      "https://www.firecrawl.dev/prometheus/api/v1/scripts/30D4teMBEGmVlYVCW41uq/run",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          params: {
+            url: productUrl,
+          },
+        }),
+      },
+    );
+
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(
+        (body &&
+          typeof body === "object" &&
+          ("error" in body || "message" in body) &&
+          String(
+            (body as { error?: unknown; message?: unknown }).error ??
+              (body as { message?: unknown }).message,
+          )) ||
+          `Prometheus API HTTP ${res.status}`,
+      );
+    }
+
+    const source =
+      body && typeof body === "object"
+        ? ((
+            body as {
+              data?: { json?: unknown; extract?: unknown; output?: unknown };
+              json?: unknown;
+              extract?: unknown;
+              output?: unknown;
+              result?: unknown;
+            }
+          ).data?.json ??
+          (body as { data?: { extract?: unknown } }).data?.extract ??
+          (body as { data?: { output?: unknown } }).data?.output ??
+          (body as { json?: unknown }).json ??
+          (body as { extract?: unknown }).extract ??
+          (body as { output?: unknown }).output ??
+          (body as { result?: unknown }).result ??
+          body)
+        : null;
+
+    const j =
+      source && typeof source === "object" && "data" in source
+        ? ((source as { data?: unknown }).data ?? source)
+        : source;
+
+    if (!j || typeof j !== "object") {
+      throw new Error("Prometheus API returned no structured product data.");
+    }
+
+    const product = j as Partial<Record<keyof Scraped, unknown>>;
+    return {
+      title: String(product.title ?? ""),
+      category: String(product.category ?? ""),
+      price: product.price != null ? String(product.price) : "",
+      mrp: product.mrp != null ? String(product.mrp) : "",
+      image: String(product.image ?? ""),
+    };
+  });
 
 const emptyScraped: Scraped = {
   title: "",
@@ -97,7 +184,6 @@ function AdminPage() {
   }
 
   const [config, setConfig] = useState<Config>({
-    firecrawlKey: "",
     spreadsheetId: "",
     sheetTab: "Sheet2",
     appsScriptUrl: "",
@@ -107,23 +193,25 @@ function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(
-    null,
-  );
+  const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [showConfig, setShowConfig] = useState(false);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (raw) setConfig({ ...JSON.parse(raw) });
-    } catch {}
+    } catch {
+      // Ignore invalid persisted admin configuration.
+    }
   }, []);
 
   function saveConfig(next: Config) {
     setConfig(next);
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(next));
-    } catch {}
+    } catch {
+      // Ignore localStorage write failures.
+    }
   }
 
   async function handleFetch() {
@@ -132,61 +220,15 @@ function AdminPage() {
       setMsg({ type: "err", text: "Paste an Amazon product URL first." });
       return;
     }
-    if (!config.firecrawlKey) {
-      setMsg({ type: "err", text: "Add your Firecrawl API key in Config." });
-      setShowConfig(true);
-      return;
-    }
     setLoading(true);
     try {
-      const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.firecrawlKey}`,
-        },
-        body: JSON.stringify({
-          url: url.trim(),
-          location: {
-  country: "IN",
-},
-waitFor: 3000,
-          formats: [
-            {
-              type: "json",
-              prompt: "Extract Amazon product info.Return all text fields (title and category) in English only. Return keys: title (string), category (string, best breadcrumb category), price (number, current selling price in local currency, no symbols), mrp (number, original/list/MRP price, no symbols), image (string, absolute URL of main product image).",
-      schema: {
-        type: "object",
-        properties: {
-          title: { type: "string" },
-          category: { type: "string" },
-          price: { type: "number" },
-          mrp: { type: "number" },
-          image: { type: "string" },
-        },  
-      },
-     },
-          ],
-          onlyMainContent: true,
-          proxy: "enhanced",
-        }),
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(
-          (body && (body.error || body.message)) ||
-            `Firecrawl HTTP ${res.status}`,
-        );
-      }
-      const j =
-        body?.data?.json ?? body?.json ?? body?.data?.extract ?? body?.extract;
-      if (!j) throw new Error("Firecrawl returned no structured data.");
+      const product = await fetchProductDetails({ data: { url: url.trim() } });
       setScraped({
-        title: String(j.title ?? ""),
-        category: String(j.category ?? ""),
-        price: j.price != null ? String(j.price) : "",
-        mrp: j.mrp != null ? String(j.mrp) : "",
-        image: String(j.image ?? ""),
+        title: product.title,
+        category: product.category,
+        price: product.price,
+        mrp: product.mrp,
+        image: product.image,
         updated: formatISTTimestamp(new Date()),
       });
       setMsg({ type: "ok", text: "Fetched. Review & edit, then save." });
@@ -246,7 +288,9 @@ waitFor: 3000,
         const j = JSON.parse(text);
         if (j && typeof j.ok === "boolean") ok = j.ok;
         if (j && j.error) errText = j.error;
-      } catch {}
+      } catch {
+        // Apps Script may return non-JSON text on failure.
+      }
       if (!ok) throw new Error(errText || `HTTP ${res.status}`);
       setMsg({ type: "ok", text: "Saved to Sheet 2 ✅" });
       setUrl("");
@@ -325,9 +369,7 @@ waitFor: 3000,
     return (
       <main className="mx-auto max-w-md px-4 py-16 text-center">
         <h1 className="text-xl font-bold text-foreground">Access denied</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your account isn't an administrator.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Your account isn't an administrator.</p>
         <button
           type="button"
           onClick={handleSignOut}
@@ -349,12 +391,10 @@ waitFor: 3000,
         <div>
           <h1 className="text-2xl font-bold text-foreground">Mobile Admin</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Scrape an Amazon product, then publish to the website or append to Sheet 2.
+            Fetch an Amazon product, then publish to the website or append to Sheet 2.
           </p>
           {adminEmail && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Signed in as {adminEmail}
-            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Signed in as {adminEmail}</p>
           )}
         </div>
         <button
@@ -373,33 +413,16 @@ waitFor: 3000,
           className="flex w-full items-center justify-between text-sm font-semibold text-foreground"
         >
           <span>⚙️ Config</span>
-          <span className="text-xs text-muted-foreground">
-            {showConfig ? "hide" : "show"}
-          </span>
+          <span className="text-xs text-muted-foreground">{showConfig ? "hide" : "show"}</span>
         </button>
         {showConfig && (
           <div className="mt-3 space-y-3">
-            <div>
-              <label className={labelCls}>Firecrawl API Key</label>
-              <input
-                type="password"
-                autoComplete="off"
-                className={inputCls}
-                value={config.firecrawlKey}
-                onChange={(e) =>
-                  saveConfig({ ...config, firecrawlKey: e.target.value })
-                }
-                placeholder="fc-..."
-              />
-            </div>
             <div>
               <label className={labelCls}>Google Spreadsheet ID</label>
               <input
                 className={inputCls}
                 value={config.spreadsheetId}
-                onChange={(e) =>
-                  saveConfig({ ...config, spreadsheetId: e.target.value })
-                }
+                onChange={(e) => saveConfig({ ...config, spreadsheetId: e.target.value })}
                 placeholder="1AbC..."
               />
             </div>
@@ -408,32 +431,27 @@ waitFor: 3000,
               <input
                 className={inputCls}
                 value={config.sheetTab}
-                onChange={(e) =>
-                  saveConfig({ ...config, sheetTab: e.target.value })
-                }
+                onChange={(e) => saveConfig({ ...config, sheetTab: e.target.value })}
                 placeholder="Sheet2"
               />
             </div>
             <div>
-              <label className={labelCls}>
-                Google Apps Script Web App URL
-              </label>
+              <label className={labelCls}>Google Apps Script Web App URL</label>
               <input
                 className={inputCls}
                 value={config.appsScriptUrl}
-                onChange={(e) =>
-                  saveConfig({ ...config, appsScriptUrl: e.target.value })
-                }
+                onChange={(e) => saveConfig({ ...config, appsScriptUrl: e.target.value })}
                 placeholder="https://script.google.com/macros/s/.../exec"
               />
               <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                Required to write to Google Sheets. Deploy the script shown
-                below once, then paste its Web App URL here.
+                Required to write to Google Sheets. Deploy the script shown below once, then paste
+                its Web App URL here.
               </p>
             </div>
             <details className="rounded border border-border bg-muted/40 p-2 text-[11px]">
               <summary className="cursor-pointer font-semibold">
-                Apps Script code (copy into your sheet → Extensions → Apps Script → Deploy as Web App, "Anyone" access)
+                Apps Script code (copy into your sheet → Extensions → Apps Script → Deploy as Web
+                App, "Anyone" access)
               </summary>
               <pre className="mt-2 overflow-auto whitespace-pre-wrap break-all text-[10px] leading-snug">{`function doPost(e){
   try{
@@ -507,9 +525,7 @@ waitFor: 3000,
               className={`${inputCls} ${k === "updated" ? "bg-muted/60 text-muted-foreground" : ""}`}
               value={scraped[k]}
               readOnly={k === "updated"}
-              onChange={(e) =>
-                setScraped({ ...scraped, [k]: e.target.value })
-              }
+              onChange={(e) => setScraped({ ...scraped, [k]: e.target.value })}
             />
           </div>
         ))}
@@ -540,8 +556,8 @@ waitFor: 3000,
           {publishing ? "Publishing…" : "Save to Website (Publish Live)"}
         </button>
         <p className="text-[11px] leading-snug text-muted-foreground">
-          Publishes instantly to the site database with your Amazon affiliate
-          tag <code>pavani15-21</code>. Independent of Google Sheets.
+          Publishes instantly to the site database with your Amazon affiliate tag{" "}
+          <code>pavani15-21</code>. Independent of Google Sheets.
         </p>
       </div>
     </main>
