@@ -132,12 +132,20 @@ function AdminPage() {
       setMsg({ type: "err", text: "Paste an Amazon product URL first." });
       return;
     }
+    if (!config.firecrawlKey.trim()) {
+      setMsg({ type: "err", text: "Add your Firecrawl API key in Config." });
+      setShowConfig(true);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/admin/fetch-details", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({
+          url: url.trim(),
+          apiKey: config.firecrawlKey.trim(),
+        }),
       });
       const j = await res.json().catch(() => null);
       if (!res.ok) {

@@ -56,22 +56,24 @@ export const Route = createFileRoute("/api/admin/fetch-details")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey = process.env.FIRECRAWL_API_KEY;
-        if (!apiKey) {
-          return jsonResponse({ error: "FIRECRAWL_API_KEY is not configured." }, 500);
-        }
-
         const requestBody = await request.json().catch(() => null);
         const url =
           requestBody && typeof requestBody === "object"
             ? String((requestBody as Record<string, unknown>).url ?? "").trim()
+            : "";
+        const apiKey =
+          requestBody && typeof requestBody === "object"
+            ? String((requestBody as Record<string, unknown>).apiKey ?? "").trim()
             : "";
 
         if (!url) {
           return jsonResponse({ error: "Amazon product URL is required." }, 400);
         }
 
-        console.log("PROMETHEUS API CALLED");
+        if (!apiKey) {
+          return jsonResponse({ error: "Firecrawl API key is required." }, 400);
+        }
+
         const response = await fetch(PROMETHEUS_URL, {
           method: "POST",
           headers: {
@@ -82,10 +84,8 @@ export const Route = createFileRoute("/api/admin/fetch-details")({
             params: { url },
           }),
         });
-        console.log("Prometheus HTTP status:", response.status);
 
         const responseText = await response.text();
-        console.log("Prometheus response:", responseText);
 
         let body: unknown = null;
         try {
