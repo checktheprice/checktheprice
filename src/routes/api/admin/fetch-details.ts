@@ -82,8 +82,18 @@ export const Route = createFileRoute("/api/admin/fetch-details")({
             params: { url },
           }),
         });
+        console.log("Prometheus HTTP status:", response.status);
 
-        const body = await response.json().catch(() => null);
+        const responseText = await response.text();
+        console.log("Prometheus response:", responseText);
+
+        let body: unknown = null;
+        try {
+          body = JSON.parse(responseText);
+        } catch {
+          body = null;
+        }
+
         if (!response.ok) {
           return jsonResponse(
             {
