@@ -28,7 +28,6 @@ type Scraped = {
 const LS_KEY = "ctp_admin_config_v1";
 
 type Config = {
-  firecrawlKey: string;
   spreadsheetId: string;
   sheetTab: string;
   appsScriptUrl: string;
@@ -97,14 +96,12 @@ function AdminPage() {
   }
 
   const [config, setConfig] = useState<Config>({
-    firecrawlKey: "",
     spreadsheetId: "",
     sheetTab: "Sheet2",
     appsScriptUrl: "",
   });
   const [url, setUrl] = useState("");
   const [scraped, setScraped] = useState<Scraped>(emptyScraped);
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(
@@ -124,53 +121,6 @@ function AdminPage() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(next));
     } catch {}
-  }
-
-  async function handleFetch() {
-    setMsg(null);
-    if (!url.trim()) {
-      setMsg({ type: "err", text: "Paste an Amazon product URL first." });
-      return;
-    }
-    if (!config.firecrawlKey.trim()) {
-      setMsg({ type: "err", text: "Add your Firecrawl API key in Config." });
-      setShowConfig(true);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/fetch-details", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: url.trim(),
-          apiKey: config.firecrawlKey.trim(),
-        }),
-      });
-      const j = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(
-          (j && (j.error || j.message)) || `Fetch details HTTP ${res.status}`,
-        );
-      }
-      if (!j?.title || !j?.price || !j?.image) {
-        throw new Error("Fetched product details are missing title, price, or image.");
-      }
-      setScraped({
-        title: String(j.title ?? ""),
-        category: String(j.category ?? ""),
-        price: j.price != null ? String(j.price) : "",
-        mrp: j.mrp != null ? String(j.mrp) : "",
-        image: String(j.image ?? ""),
-        updated: String(j.updated || formatISTTimestamp(new Date())),
-      });
-      setMsg({ type: "ok", text: "Fetched. Review & edit, then save." });
-    } catch (e) {
-      setScraped(emptyScraped);
-      setMsg({ type: "err", text: `Fetch failed: ${(e as Error).message}` });
-    } finally {
-      setLoading(false);
-    }
   }
 
   async function handleSave() {
@@ -356,19 +306,6 @@ function AdminPage() {
         {showConfig && (
           <div className="mt-3 space-y-3">
             <div>
-              <label className={labelCls}>Firecrawl API Key</label>
-              <input
-                type="password"
-                autoComplete="off"
-                className={inputCls}
-                value={config.firecrawlKey}
-                onChange={(e) =>
-                  saveConfig({ ...config, firecrawlKey: e.target.value })
-                }
-                placeholder="fc-..."
-              />
-            </div>
-            <div>
               <label className={labelCls}>Google Spreadsheet ID</label>
               <input
                 className={inputCls}
@@ -444,14 +381,9 @@ function AdminPage() {
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://www.amazon.in/dp/..."
         />
-        <button
-          type="button"
-          onClick={handleFetch}
-          disabled={loading}
-          className="w-full rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-        >
-          {loading ? "Fetching…" : "Fetch Product"}
-        </button>
+        <p className="text-[11px] leading-snug text-muted-foreground">
+          Used to generate the affiliate link. Fill in product details below manually.
+        </p>
       </div>
 
       {msg && (
