@@ -1,0 +1,68 @@
+Since your goal is to **replace the unsupported Prometheus `/run` API with a webhook**, give Replit AI one complete task instead of many small ones.
+
+Use this prompt:
+
+---
+
+> Study the entire repository before making changes.
+>
+> Find the existing **Save to Website (Publish Live)** backend implementation and understand how it:
+>
+> * saves products to Supabase,
+> * generates the Amazon affiliate URL using my tag (`pavani15-21`),
+> * prevents duplicates,
+> * and publishes deals.
+>
+> Remove the previous Prometheus `/run` integration completely, including any code that calls:
+>
+> ```
+> https://www.firecrawl.dev/prometheus/api/v1/scripts/30D4teMBEGmVlYVCW41uq/run
+> ```
+>
+> Remove any temporary `PROMETHEUS API CALLED` logs and any unused code related only to that integration.
+>
+> Create a new server endpoint:
+>
+> ```
+> POST /api/prometheus
+> ```
+>
+> This endpoint will receive POST requests from a Prometheus Webhook Connection with JSON similar to:
+>
+> ```json
+> {
+>   "standard_link": "...",
+>   "title": "...",
+>   "category": "...",
+>   "price": 579,
+>   "mrp": 1999,
+>   "image": "...",
+>   "updated": "..."
+> }
+> ```
+>
+> The webhook endpoint must:
+>
+> * Validate required fields.
+> * Reuse the existing **Publish Live** backend logic instead of duplicating it.
+> * Generate the affiliate URL exactly the same way the current Publish Live flow does.
+> * Save to Supabase.
+> * Preserve all existing database schema and business logic.
+> * Return HTTP 200 on success.
+> * Return appropriate HTTP 4xx/5xx errors on failure.
+>
+> Do not change the homepage or website UI.
+>
+> Keep the Mobile Admin page for manual publishing, but remove the old Prometheus `/run` fetch integration.
+>
+> After finishing:
+>
+> * Build the project.
+> * Fix any TypeScript or build errors.
+> * Commit the changes.
+> * Push them to GitHub.
+> * List every modified file and explain why it was changed.
+
+---
+
+This prompt tells Replit to **understand your existing code first**, then **reuse** your current publishing logic rather than creating a separate path. That reduces the risk of breaking your affiliate-link generation or Supabase integration.
