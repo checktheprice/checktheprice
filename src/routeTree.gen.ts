@@ -22,6 +22,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DealSlugRouteImport } from './routes/deal.$slug'
 import { Route as ApiPrometheusRouteImport } from './routes/api/prometheus'
+import { Route as ApiAdminFetchDetailsRouteImport } from './routes/api/admin/fetch-details'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -88,6 +89,11 @@ const ApiPrometheusRoute = ApiPrometheusRouteImport.update({
   path: '/api/prometheus',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminFetchDetailsRoute = ApiAdminFetchDetailsRouteImport.update({
+  id: '/api/admin/fetch-details',
+  path: '/api/admin/fetch-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/prometheus': typeof ApiPrometheusRoute
   '/deal/$slug': typeof DealSlugRoute
+  '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/prometheus': typeof ApiPrometheusRoute
   '/deal/$slug': typeof DealSlugRoute
+  '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/prometheus': typeof ApiPrometheusRoute
   '/deal/$slug': typeof DealSlugRoute
+  '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/prometheus'
     | '/deal/$slug'
+    | '/api/admin/fetch-details'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/prometheus'
     | '/deal/$slug'
+    | '/api/admin/fetch-details'
   id:
     | '__root__'
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/prometheus'
     | '/deal/$slug'
+    | '/api/admin/fetch-details'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiPrometheusRoute: typeof ApiPrometheusRoute
   DealSlugRoute: typeof DealSlugRoute
+  ApiAdminFetchDetailsRoute: typeof ApiAdminFetchDetailsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPrometheusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/fetch-details': {
+      id: '/api/admin/fetch-details'
+      path: '/api/admin/fetch-details'
+      fullPath: '/api/admin/fetch-details'
+      preLoaderRoute: typeof ApiAdminFetchDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiPrometheusRoute: ApiPrometheusRoute,
   DealSlugRoute: DealSlugRoute,
+  ApiAdminFetchDetailsRoute: ApiAdminFetchDetailsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
