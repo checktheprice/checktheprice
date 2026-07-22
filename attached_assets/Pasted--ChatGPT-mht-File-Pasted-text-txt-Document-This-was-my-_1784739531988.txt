@@ -1,0 +1,168 @@
+
+
+ChatGPT.mht
+File
+
+
+
+
+Pasted text.txt
+Document
+This was my admin page original but when I paste url fetch it's returned 0 values so I build Prometheus api scraper
+
+
+
+check-the-price-amazon-india-product-scraper.zip
+Zip Archive
+Check this code I want this code in my website to consume 1 credit 
+
+This is actually a good result. Replit has done most of the hard work.
+
+What Replit has done
+✅ Removed the unsupported Prometheus /run integration.
+
+✅ Created a new webhook endpoint: POST /api/prometheus.
+
+✅ Protected it with X-Webhook-Secret.
+
+✅ Reused your existing Publish Live logic (affiliate tag, discount, Supabase save).
+
+✅ Restored your original Mobile Admin page.
+
+✅ Build passes.
+
+Before you deploy
+You need two environment variables:
+
+PROMETHEUS_WEBHOOK_SECRET
+
+Choose any long random string, for example:
+
+ctp_7f8d92a1b4e6_secret_2026
+Add it to your hosting environment (Vercel if that's what you're deploying from).
+
+SUPABASE_SERVICE_ROLE_KEY
+
+Get it from Supabase → Settings → API.
+
+Use the service_role key (keep it secret).
+
+Add it as a server environment variable.
+
+Configure Prometheus
+In Prometheus → Add Connection → Webhook:
+
+Webhook URL
+
+https://checktheprice.vercel.app/api/prometheus
+Header
+
+X-Webhook-Secret: ctp_7f8d92a1b4e6_secret_2026
+(Use whatever secret you actually configured.)
+
+One thing I'd change
+Replit says:
+
+fetch-details.ts now returns HTTP 410.
+
+Instead of leaving a dead endpoint, I'd eventually remove it entirely once you're sure the webhook works. Until then it's harmless because it makes it clear that the old flow is no longer supported.
+
+Before merging
+Ask Replit to perform one more test:
+
+"Simulate a POST request to /api/prometheus with sample Prometheus JSON and verify that:
+
+the affiliate link is generated correctly using pavani15-21,
+
+the row is inserted into Supabase,
+
+duplicate detection still works,
+
+the endpoint returns HTTP 200."
+
+If that test passes, you'll have much higher confidence that the webhook is correctly wired before deploying it.
+
+
+Where is webhook secret 
+
+The webhook secret does not already exist. You create it yourself.
+
+For example, choose a long random string like:
+
+PROMETHEUS_WEBHOOK_SECRET=ctp_8xL92kQmP7vR4aY2026
+or
+
+PROMETHEUS_WEBHOOK_SECRET=my-very-long-random-secret-123456
+Then:
+
+In Vercel
+Open your project.
+
+Go to Settings → Environment Variables.
+
+Add:
+
+Name
+
+PROMETHEUS_WEBHOOK_SECRET
+Value
+
+ctp_8xL92kQmP7vR4aY2026
+Save.
+
+Redeploy your project.
+
+In Prometheus
+When adding the Webhook connection:
+
+Webhook URL
+
+https://checktheprice.vercel.app/api/prometheus
+Header
+
+Key:
+
+X-Webhook-Secret
+Value:
+
+ctp_8xL92kQmP7vR4aY2026
+The value must exactly match the environment variable you set in Vercel.
+
+This secret is simply a shared password between Prometheus and your website. It lets your website verify that the incoming webhook really came from a trusted source.
+
+
+Replace Prometheus /run API with authenticated POST /api/prometheus webhook
+Remove src/routes/api/admin/fetch-details.ts (Prometheus caller)
+- Create src/routes/api/prometheus.ts — webhook endpoint with X-Webhook-Secret auth,
+reusing same affiliate link + discount logic as Publish Live flow
+- Remove Fetch Product button + firecrawlKey from admin.tsx; keep manual publish flow
+- Update routeTree.gen.ts: swap ApiAdminFetchDetailsRoute → ApiPrometheusRoute
+- Build passes cleanly
+
+I would not use that exact version.
+
+The line:
+
+Remove Fetch Product button + firecrawlKey from admin.tsx
+
+conflicts with what you previously decided—you wanted to keep the admin page until the webhook is verified.
+
+A better version is:
+
+Replace the unsupported Prometheus /run API with an authenticated POST /api/prometheus webhook.
+
+Remove src/routes/api/admin/fetch-details.ts and all code that calls the Prometheus /run endpoint.
+
+Create src/routes/api/prometheus.ts protected by the X-Webhook-Secret header.
+
+Reuse the existing Publish Live backend logic (affiliate tag pavani15-21, discount calculation, duplicate checks, and Supabase save).
+
+Keep the existing Mobile Admin page and Fetch Product button unchanged for now. The button may return a clear message that the old Prometheus /run integration has been removed, but do not remove the UI until the webhook is fully tested.
+
+Remove only the obsolete Firecrawl/Prometheus /run integration code.
+
+Update routeTree.gen.ts to register the new /api/prometheus route.
+
+Ensure the project builds successfully.
+
+Provide the webhook URL and deployment instructions.
