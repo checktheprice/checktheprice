@@ -94,6 +94,27 @@ export const Route = createFileRoute("/api/prometheus")({
           "@/integrations/supabase/client.server"
         );
 
+        // Duplicate detection: reject if an active deal with the same standard_link already exists
+        const { data: existing, error: lookupError } = await supabaseAdmin
+          .from("deals")
+          .select("id")
+          .eq("standard_link", standard_link)
+          .eq("is_active", true)
+          .limit(1)
+          .maybeSingle();
+
+        if (lookupError) {
+          console.error("[/api/prometheus] Duplicate check error:", lookupError);
+          return jsonResponse({ error: `Database error: ${lookupError.message}` }, 500);
+        }
+
+        if (existing) {
+          return jsonResponse(
+            { error: "Duplicate: an active deal with this standard_link already exists.", id: existing.id },
+            409,
+          );
+        }
+
         const { error } = await supabaseAdmin.from("deals").insert({
           title,
           image,
