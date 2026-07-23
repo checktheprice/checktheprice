@@ -1,0 +1,65 @@
+Yes. First upload the ZIP into your Replit project.
+
+### Step 1
+
+In Replit:
+
+* Open your project.
+* In the **Files** panel, click **Upload** (or drag and drop).
+* Upload:
+
+  * `check-the-price-amazon-india-product-scraper.zip`
+
+or extract it locally and upload the extracted folder.
+
+You should end up with something like:
+
+```text
+/prometheus-export/
+    script.ts
+    package.json
+    README.md
+    data.json
+```
+
+### Step 2
+
+Then send this prompt to Replit Agent:
+
+> I have uploaded the exported Prometheus Firecrawl project (`script.ts`, `package.json`, `README.md`, `data.json`) into this repository. Use the uploaded `script.ts` as the source of truth. Do not rewrite or approximate its Firecrawl SDK logic.
+>
+> Replace only the backend implementation of `src/routes/api/admin/fetch-details.ts`.
+>
+> Remove every reference to the unsupported Prometheus `/run` API.
+>
+> Instead, reuse the Firecrawl SDK implementation from the uploaded `script.ts`.
+>
+> Requirements:
+>
+> * Read `FIRECRAWL_API_KEY` from environment variables.
+> * Accept the Amazon product URL from the existing Fetch Product button.
+> * Validate and normalize the Amazon URL exactly like `script.ts`.
+> * Execute the same Firecrawl scrape and extraction logic as `script.ts`.
+> * Return exactly the same JSON fields:
+>
+>   * `standard_link`
+>   * `title`
+>   * `category`
+>   * `price`
+>   * `mrp`
+>   * `image`
+>   * `updated`
+> * Keep the Mobile Admin UI unchanged.
+> * Keep the Fetch Product button unchanged.
+> * Populate the existing Title, Category, Price, MRP, Image URL and Updated fields.
+> * Do not modify Save to Website.
+> * Do not modify Save to Google Sheet.
+> * Do not modify affiliate tag generation (`pavani15-21`).
+> * Do not modify discount calculation.
+> * Keep the existing `/api/prometheus` webhook unchanged for future automation.
+> * Keep all Firecrawl API calls server-side.
+> * Reuse helper functions from `script.ts` instead of duplicating code where practical.
+> * Build successfully.
+> * Commit all changes with a descriptive commit message.
+
+This prompt gives the agent access to the actual exported code and tells it to **reuse that implementation** rather than inventing a new one.
