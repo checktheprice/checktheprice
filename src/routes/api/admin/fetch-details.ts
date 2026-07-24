@@ -310,7 +310,7 @@ export const Route = createFileRoute("/api/admin/fetch-details")({
           price: p.price,
           mrp: p.mrp ?? p.price,
           image: p.image,
-          updated: new Date().toISOString(),
+          updated: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
         });
       },
     },
