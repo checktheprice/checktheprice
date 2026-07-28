@@ -16,10 +16,10 @@ export const Route = createFileRoute("/disclaimer")({
         content:
           "Prices, discounts, and availability may change at any time. Verify details on the retailer site before purchasing.",
       },
-      { property: "og:url", content: "https://checktheprice.lovable.app/disclaimer" },
+      { property: "og:url", content: "https://checktheprice.vercel.app/disclaimer" },
     ],
     links: [
-      { rel: "canonical", href: "https://checktheprice.lovable.app/disclaimer" },
+      { rel: "canonical", href: "https://checktheprice.vercel.app/disclaimer" },
     ],
   }),
 });
