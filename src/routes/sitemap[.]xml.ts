@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
-import { fetchDeals, slugifyTitle } from "@/lib/deals";
+import { slugifyTitle } from "@/lib/deals";
+import { fetchAllDeals } from "@/lib/all-deals";
 
 const BASE_URL = "https://checktheprice.vercel.app";
 
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/sitemap.xml")({
         const entries: SitemapEntry[] = [...STATIC_PAGES];
 
         try {
-          const { deals } = await fetchDeals();
+          const deals = await fetchAllDeals();
           for (const deal of deals) {
             const slug = slugifyTitle(deal.title);
             if (slug) {
@@ -74,7 +75,7 @@ export const Route = createFileRoute("/sitemap.xml")({
           status: 200,
           headers: {
             "Content-Type": "application/xml; charset=utf-8",
-            "Cache-Control": "public, max-age=3600, s-maxage=3600",
+            "Cache-Control": "public, max-age=60, s-maxage=60, stale-while-revalidate=300",
           },
         });
       },
