@@ -3,7 +3,8 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { DealCard } from "@/components/DealCard";
 import { PriceAlertModal } from "@/components/PriceAlertModal";
 import { useEffect, useMemo, useState } from "react";
-import { fetchDeals, slugifyTitle, type Deal, calcDiscount } from "@/lib/deals";
+import { slugifyTitle, type Deal, calcDiscount } from "@/lib/deals";
+import { fetchAllDeals } from "@/lib/all-deals";
 import {
   generateSeoContent,
   getSeoContent,
@@ -11,8 +12,8 @@ import {
 } from "@/lib/seo-content";
 
 const dealsQueryOptions = queryOptions({
-  queryKey: ["deals"],
-  queryFn: fetchDeals,
+  queryKey: ["all-deals"],
+  queryFn: fetchAllDeals,
   staleTime: 5 * 60_000,
   gcTime: 30 * 60_000,
   retry: 1,
@@ -24,7 +25,7 @@ function findDeal(deals: Deal[], slug: string): Deal | undefined {
 
 export const Route = createFileRoute("/deal/$slug")({
   loader: async ({ context, params }) => {
-    const { deals } = await context.queryClient.ensureQueryData(dealsQueryOptions);
+    const deals = await context.queryClient.ensureQueryData(dealsQueryOptions);
     const deal = findDeal(deals, params.slug);
     if (!deal) throw notFound();
     const discountPct =
@@ -107,7 +108,7 @@ function DealNotFound() {
 function DealPage() {
   const { slug } = Route.useParams();
   const { data } = useSuspenseQuery(dealsQueryOptions);
-  const deal = findDeal(data.deals, slug);
+  const deal = findDeal(data, slug);
   const [alertDeal, setAlertDeal] = useState<Deal | null>(null);
   const [updatedLabel, setUpdatedLabel] = useState<string>("Recently updated");
 
@@ -287,3 +288,4 @@ function DealPage() {
     </div>
   );
 }
+
