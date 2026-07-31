@@ -19,8 +19,33 @@ const dealsQueryOptions = queryOptions({
   retry: 1,
 });
 
+/**
+ * Resolve a deal from a URL slug.
+ *
+ * Primary match is the exact `slugifyTitle` output used by RSS, the sitemap and
+ * every internal link, so those URLs always resolve. The fallbacks make the
+ * route tolerant of slugs that were generated before/after a title edit or that
+ * were truncated differently (slugifyTitle caps at 80 chars), instead of
+ * 404-ing a deal that exists in the feed.
+ */
 function findDeal(deals: Deal[], slug: string): Deal | undefined {
-  return deals.find((d) => slugifyTitle(d.title) === slug);
+  const wanted = slug.toLowerCase().replace(/^-+|-+$/g, "");
+  if (!wanted) return undefined;
+
+  const exact = deals.find((d) => slugifyTitle(d.title) === wanted);
+  if (exact) return exact;
+
+  const fullSlug = (d: Deal) =>
+    d.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  return (
+    deals.find((d) => fullSlug(d) === wanted) ??
+    deals.find((d) => fullSlug(d).startsWith(wanted)) ??
+    deals.find((d) => wanted.startsWith(slugifyTitle(d.title)))
+  );
 }
 
 export const Route = createFileRoute("/deal/$slug")({
