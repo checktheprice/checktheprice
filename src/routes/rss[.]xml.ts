@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
-import { fetchDeals, slugifyTitle } from "@/lib/deals";
+import { slugifyTitle } from "@/lib/deals";
+import { fetchAllDeals } from "@/lib/all-deals";
 
 const BASE_URL = "https://checktheprice.vercel.app";
 
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/rss.xml")({
         let itemsXml = "";
 
         try {
-          const { deals } = await fetchDeals();
+          const deals = await fetchAllDeals();
           for (const deal of deals) {
             const slug = slugifyTitle(deal.title);
             if (!slug) continue;
@@ -79,7 +80,7 @@ export const Route = createFileRoute("/rss.xml")({
         return new Response(xml, {
           headers: {
             "Content-Type": "application/rss+xml; charset=utf-8",
-            "Cache-Control": "public, max-age=3600",
+            "Cache-Control": "public, max-age=60, s-maxage=60, stale-while-revalidate=300",
           },
         });
       },
