@@ -9,64 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as DisclaimerRouteImport } from './routes/disclaimer'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AffiliateDisclosureRouteImport } from './routes/affiliate-disclosure'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DealSlugRouteImport } from './routes/deal.$slug'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AffiliateDisclosureRouteImport } from './routes/affiliate-disclosure'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DisclaimerRouteImport } from './routes/disclaimer'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiPrometheusRouteImport } from './routes/api/prometheus'
+import { Route as DealSlugRouteImport } from './routes/deal.$slug'
+import { Route as ApiAdminAmazonHydrateRouteImport } from './routes/api/admin/amazon-hydrate'
+import { Route as ApiAdminAmazonRefreshRouteImport } from './routes/api/admin/amazon-refresh'
+import { Route as ApiAdminAmazonSearchRouteImport } from './routes/api/admin/amazon-search'
 import { Route as ApiAdminFetchDetailsRouteImport } from './routes/api/admin/fetch-details'
+import { Route as ApiPublicCronRefreshDealsRouteImport } from './routes/api/public/cron/refresh-deals'
 
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RssDotxmlRoute = RssDotxmlRouteImport.update({
-  id: '/rss.xml',
-  path: '/rss.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DisclaimerRoute = DisclaimerRouteImport.update({
-  id: '/disclaimer',
-  path: '/disclaimer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AffiliateDisclosureRoute = AffiliateDisclosureRouteImport.update({
-  id: '/affiliate-disclosure',
-  path: '/affiliate-disclosure',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -74,14 +38,49 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DealSlugRoute = DealSlugRouteImport.update({
-  id: '/deal/$slug',
-  path: '/deal/$slug',
+const AffiliateDisclosureRoute = AffiliateDisclosureRouteImport.update({
+  id: '/affiliate-disclosure',
+  path: '/affiliate-disclosure',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisclaimerRoute = DisclaimerRouteImport.update({
+  id: '/disclaimer',
+  path: '/disclaimer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RssDotxmlRoute = RssDotxmlRouteImport.update({
+  id: '/rss.xml',
+  path: '/rss.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPrometheusRoute = ApiPrometheusRouteImport.update({
@@ -89,11 +88,37 @@ const ApiPrometheusRoute = ApiPrometheusRouteImport.update({
   path: '/api/prometheus',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DealSlugRoute = DealSlugRouteImport.update({
+  id: '/deal/$slug',
+  path: '/deal/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAmazonHydrateRoute = ApiAdminAmazonHydrateRouteImport.update({
+  id: '/api/admin/amazon-hydrate',
+  path: '/api/admin/amazon-hydrate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAmazonRefreshRoute = ApiAdminAmazonRefreshRouteImport.update({
+  id: '/api/admin/amazon-refresh',
+  path: '/api/admin/amazon-refresh',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAmazonSearchRoute = ApiAdminAmazonSearchRouteImport.update({
+  id: '/api/admin/amazon-search',
+  path: '/api/admin/amazon-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminFetchDetailsRoute = ApiAdminFetchDetailsRouteImport.update({
   id: '/api/admin/fetch-details',
   path: '/api/admin/fetch-details',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronRefreshDealsRoute =
+  ApiPublicCronRefreshDealsRouteImport.update({
+    id: '/api/public/cron/refresh-deals',
+    path: '/api/public/cron/refresh-deals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,7 +134,11 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/prometheus': typeof ApiPrometheusRoute
   '/deal/$slug': typeof DealSlugRoute
+  '/api/admin/amazon-hydrate': typeof ApiAdminAmazonHydrateRoute
+  '/api/admin/amazon-refresh': typeof ApiAdminAmazonRefreshRoute
+  '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
+  '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -125,7 +154,11 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/prometheus': typeof ApiPrometheusRoute
   '/deal/$slug': typeof DealSlugRoute
+  '/api/admin/amazon-hydrate': typeof ApiAdminAmazonHydrateRoute
+  '/api/admin/amazon-refresh': typeof ApiAdminAmazonRefreshRoute
+  '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
+  '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -142,7 +175,11 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/prometheus': typeof ApiPrometheusRoute
   '/deal/$slug': typeof DealSlugRoute
+  '/api/admin/amazon-hydrate': typeof ApiAdminAmazonHydrateRoute
+  '/api/admin/amazon-refresh': typeof ApiAdminAmazonRefreshRoute
+  '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
+  '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -160,7 +197,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/prometheus'
     | '/deal/$slug'
+    | '/api/admin/amazon-hydrate'
+    | '/api/admin/amazon-refresh'
+    | '/api/admin/amazon-search'
     | '/api/admin/fetch-details'
+    | '/api/public/cron/refresh-deals'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -176,7 +217,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/prometheus'
     | '/deal/$slug'
+    | '/api/admin/amazon-hydrate'
+    | '/api/admin/amazon-refresh'
+    | '/api/admin/amazon-search'
     | '/api/admin/fetch-details'
+    | '/api/public/cron/refresh-deals'
   id:
     | '__root__'
     | '/'
@@ -192,7 +237,11 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/prometheus'
     | '/deal/$slug'
+    | '/api/admin/amazon-hydrate'
+    | '/api/admin/amazon-refresh'
+    | '/api/admin/amazon-search'
     | '/api/admin/fetch-details'
+    | '/api/public/cron/refresh-deals'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -209,72 +258,20 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiPrometheusRoute: typeof ApiPrometheusRoute
   DealSlugRoute: typeof DealSlugRoute
+  ApiAdminAmazonHydrateRoute: typeof ApiAdminAmazonHydrateRoute
+  ApiAdminAmazonRefreshRoute: typeof ApiAdminAmazonRefreshRoute
+  ApiAdminAmazonSearchRoute: typeof ApiAdminAmazonSearchRoute
   ApiAdminFetchDetailsRoute: typeof ApiAdminFetchDetailsRoute
+  ApiPublicCronRefreshDealsRoute: typeof ApiPublicCronRefreshDealsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rss.xml': {
-      id: '/rss.xml'
-      path: '/rss.xml'
-      fullPath: '/rss.xml'
-      preLoaderRoute: typeof RssDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/disclaimer': {
-      id: '/disclaimer'
-      path: '/disclaimer'
-      fullPath: '/disclaimer'
-      preLoaderRoute: typeof DisclaimerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/affiliate-disclosure': {
-      id: '/affiliate-disclosure'
-      path: '/affiliate-disclosure'
-      fullPath: '/affiliate-disclosure'
-      preLoaderRoute: typeof AffiliateDisclosureRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -284,18 +281,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/deal/$slug': {
-      id: '/deal/$slug'
-      path: '/deal/$slug'
-      fullPath: '/deal/$slug'
-      preLoaderRoute: typeof DealSlugRouteImport
+    '/affiliate-disclosure': {
+      id: '/affiliate-disclosure'
+      path: '/affiliate-disclosure'
+      fullPath: '/affiliate-disclosure'
+      preLoaderRoute: typeof AffiliateDisclosureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/disclaimer': {
+      id: '/disclaimer'
+      path: '/disclaimer'
+      fullPath: '/disclaimer'
+      preLoaderRoute: typeof DisclaimerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rss.xml': {
+      id: '/rss.xml'
+      path: '/rss.xml'
+      fullPath: '/rss.xml'
+      preLoaderRoute: typeof RssDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/prometheus': {
@@ -305,11 +351,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPrometheusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deal/$slug': {
+      id: '/deal/$slug'
+      path: '/deal/$slug'
+      fullPath: '/deal/$slug'
+      preLoaderRoute: typeof DealSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/amazon-hydrate': {
+      id: '/api/admin/amazon-hydrate'
+      path: '/api/admin/amazon-hydrate'
+      fullPath: '/api/admin/amazon-hydrate'
+      preLoaderRoute: typeof ApiAdminAmazonHydrateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/amazon-refresh': {
+      id: '/api/admin/amazon-refresh'
+      path: '/api/admin/amazon-refresh'
+      fullPath: '/api/admin/amazon-refresh'
+      preLoaderRoute: typeof ApiAdminAmazonRefreshRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/amazon-search': {
+      id: '/api/admin/amazon-search'
+      path: '/api/admin/amazon-search'
+      fullPath: '/api/admin/amazon-search'
+      preLoaderRoute: typeof ApiAdminAmazonSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/fetch-details': {
       id: '/api/admin/fetch-details'
       path: '/api/admin/fetch-details'
       fullPath: '/api/admin/fetch-details'
       preLoaderRoute: typeof ApiAdminFetchDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/refresh-deals': {
+      id: '/api/public/cron/refresh-deals'
+      path: '/api/public/cron/refresh-deals'
+      fullPath: '/api/public/cron/refresh-deals'
+      preLoaderRoute: typeof ApiPublicCronRefreshDealsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -329,7 +410,11 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiPrometheusRoute: ApiPrometheusRoute,
   DealSlugRoute: DealSlugRoute,
+  ApiAdminAmazonHydrateRoute: ApiAdminAmazonHydrateRoute,
+  ApiAdminAmazonRefreshRoute: ApiAdminAmazonRefreshRoute,
+  ApiAdminAmazonSearchRoute: ApiAdminAmazonSearchRoute,
   ApiAdminFetchDetailsRoute: ApiAdminFetchDetailsRoute,
+  ApiPublicCronRefreshDealsRoute: ApiPublicCronRefreshDealsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
