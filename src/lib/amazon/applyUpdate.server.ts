@@ -1,6 +1,7 @@
 // Smart, non-destructive sync of Amazon PA API data into the existing
 // `deals` / `deal_price_history` tables. Server-only.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 import { getItems } from "./getItems";
 import { extractAsin, type NormalizedProduct } from "./normalize";
 import { payloadHash } from "./client";
@@ -67,7 +68,7 @@ export async function applyUpdate(deal: DealRow, live: NormalizedProduct): Promi
     },
   };
 
-  const patch: Record<string, unknown> = {
+  const patch = {
     price: newPrice,
     mrp: newMrp,
     discount_percentage: calcDiscountPct(newMrp, newPrice),
@@ -75,6 +76,18 @@ export async function applyUpdate(deal: DealRow, live: NormalizedProduct): Promi
     asin: live.asin,
     last_checked_at: new Date().toISOString(),
     last_amazon_payload_hash: hash,
+  } as {
+    price: number;
+    mrp: number;
+    discount_percentage: number;
+    metadata: Json;
+    asin: string;
+    last_checked_at: string;
+    last_amazon_payload_hash: string;
+    title?: string;
+    image?: string;
+    affiliate_link?: string;
+    standard_link?: string;
   };
 
   // Only fill title/image when Amazon actually returned something.

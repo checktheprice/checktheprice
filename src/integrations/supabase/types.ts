@@ -49,6 +49,7 @@ export type Database = {
       deals: {
         Row: {
           affiliate_link: string
+          asin: string | null
           category: string
           coupon_code: string | null
           created_at: string
@@ -58,6 +59,8 @@ export type Database = {
           id: string
           image: string | null
           is_active: boolean
+          last_amazon_payload_hash: string | null
+          last_checked_at: string | null
           metadata: Json
           mrp: number
           price: number
@@ -68,6 +71,7 @@ export type Database = {
         }
         Insert: {
           affiliate_link: string
+          asin?: string | null
           category?: string
           coupon_code?: string | null
           created_at?: string
@@ -77,6 +81,8 @@ export type Database = {
           id?: string
           image?: string | null
           is_active?: boolean
+          last_amazon_payload_hash?: string | null
+          last_checked_at?: string | null
           metadata?: Json
           mrp: number
           price: number
@@ -87,6 +93,7 @@ export type Database = {
         }
         Update: {
           affiliate_link?: string
+          asin?: string | null
           category?: string
           coupon_code?: string | null
           created_at?: string
@@ -96,6 +103,8 @@ export type Database = {
           id?: string
           image?: string | null
           is_active?: boolean
+          last_amazon_payload_hash?: string | null
+          last_checked_at?: string | null
           metadata?: Json
           mrp?: number
           price?: number
