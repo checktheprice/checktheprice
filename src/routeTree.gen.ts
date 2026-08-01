@@ -26,6 +26,7 @@ import { Route as ApiAdminAmazonHydrateRouteImport } from './routes/api/admin/am
 import { Route as ApiAdminAmazonRefreshRouteImport } from './routes/api/admin/amazon-refresh'
 import { Route as ApiAdminAmazonSearchRouteImport } from './routes/api/admin/amazon-search'
 import { Route as ApiAdminFetchDetailsRouteImport } from './routes/api/admin/fetch-details'
+import { Route as ApiPublicAmazonDiagnosticsRouteImport } from './routes/api/public/amazon-diagnostics'
 import { Route as ApiPublicCronRefreshDealsRouteImport } from './routes/api/public/cron/refresh-deals'
 
 const IndexRoute = IndexRouteImport.update({
@@ -113,6 +114,12 @@ const ApiAdminFetchDetailsRoute = ApiAdminFetchDetailsRouteImport.update({
   path: '/api/admin/fetch-details',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAmazonDiagnosticsRoute =
+  ApiPublicAmazonDiagnosticsRouteImport.update({
+    id: '/api/public/amazon-diagnostics',
+    path: '/api/public/amazon-diagnostics',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronRefreshDealsRoute =
   ApiPublicCronRefreshDealsRouteImport.update({
     id: '/api/public/cron/refresh-deals',
@@ -138,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/amazon-refresh': typeof ApiAdminAmazonRefreshRoute
   '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
+  '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
 }
 export interface FileRoutesByTo {
@@ -158,6 +166,7 @@ export interface FileRoutesByTo {
   '/api/admin/amazon-refresh': typeof ApiAdminAmazonRefreshRoute
   '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
+  '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
 }
 export interface FileRoutesById {
@@ -179,6 +188,7 @@ export interface FileRoutesById {
   '/api/admin/amazon-refresh': typeof ApiAdminAmazonRefreshRoute
   '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
+  '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
 }
 export interface FileRouteTypes {
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/api/admin/amazon-refresh'
     | '/api/admin/amazon-search'
     | '/api/admin/fetch-details'
+    | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/api/admin/amazon-refresh'
     | '/api/admin/amazon-search'
     | '/api/admin/fetch-details'
+    | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
   id:
     | '__root__'
@@ -241,6 +253,7 @@ export interface FileRouteTypes {
     | '/api/admin/amazon-refresh'
     | '/api/admin/amazon-search'
     | '/api/admin/fetch-details'
+    | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
   fileRoutesById: FileRoutesById
 }
@@ -262,6 +275,7 @@ export interface RootRouteChildren {
   ApiAdminAmazonRefreshRoute: typeof ApiAdminAmazonRefreshRoute
   ApiAdminAmazonSearchRoute: typeof ApiAdminAmazonSearchRoute
   ApiAdminFetchDetailsRoute: typeof ApiAdminFetchDetailsRoute
+  ApiPublicAmazonDiagnosticsRoute: typeof ApiPublicAmazonDiagnosticsRoute
   ApiPublicCronRefreshDealsRoute: typeof ApiPublicCronRefreshDealsRoute
 }
 
@@ -386,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminFetchDetailsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/amazon-diagnostics': {
+      id: '/api/public/amazon-diagnostics'
+      path: '/api/public/amazon-diagnostics'
+      fullPath: '/api/public/amazon-diagnostics'
+      preLoaderRoute: typeof ApiPublicAmazonDiagnosticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/refresh-deals': {
       id: '/api/public/cron/refresh-deals'
       path: '/api/public/cron/refresh-deals'
@@ -414,6 +435,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminAmazonRefreshRoute: ApiAdminAmazonRefreshRoute,
   ApiAdminAmazonSearchRoute: ApiAdminAmazonSearchRoute,
   ApiAdminFetchDetailsRoute: ApiAdminFetchDetailsRoute,
+  ApiPublicAmazonDiagnosticsRoute: ApiPublicAmazonDiagnosticsRoute,
   ApiPublicCronRefreshDealsRoute: ApiPublicCronRefreshDealsRoute,
 }
 export const routeTree = rootRouteImport

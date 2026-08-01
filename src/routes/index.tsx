@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { Search, Tag, Sparkles, TrendingDown, Flame, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -129,6 +129,12 @@ function Index() {
     return Array.from(set);
   }, [deals]);
 
+  // Deal data can differ between SSR and the first client render (the DB query
+  // is client-only), so only render the derived chips after hydration.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  const visibleCategories = hydrated ? categories : ["All"];
+
   const filtered = useMemo(() => {
     if (!deals) return [];
     const list = deals.filter((d) => {
@@ -217,7 +223,7 @@ function Index() {
             <Flame className="mr-1 h-3.5 w-3.5" /> Hot Loot
           </Button>
           <div className="h-5 w-px bg-border shrink-0" />
-          {categories.map((c) => {
+          {visibleCategories.map((c) => {
             const isActive = category === c;
             let activeClass =
               "bg-primary hover:bg-primary text-primary-foreground";
