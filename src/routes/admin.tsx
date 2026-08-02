@@ -224,7 +224,17 @@ function AdminPage() {
           category: scraped.category,
           price: scraped.price,
           mrp: scraped.mrp,
-          affiliate_link: "",
+          // Amazon rows keep the existing behaviour (blank — the site appends
+          // the Associates tag). Flipkart rows carry the Cuelinks link, or the
+          // plain product URL as a temporary fallback.
+          affiliate_link:
+            merchant === "flipkart"
+              ? buildMerchantAffiliateLink(
+                  "flipkart",
+                  url.trim(),
+                  scraped.flipkartAffiliateLink,
+                )
+              : "",
           image: scraped.image,
           Duplicate: "",
           updated: scraped.updated,
@@ -248,6 +258,7 @@ function AdminPage() {
       setMsg({ type: "ok", text: "Saved to Sheet 2 ✅" });
       setUrl("");
       setScraped(emptyScraped);
+      setMerchant(null);
     } catch (e) {
       setMsg({ type: "err", text: `Save failed: ${(e as Error).message}` });
     } finally {
