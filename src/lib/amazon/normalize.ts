@@ -1,4 +1,5 @@
 import { buildAmazonAffiliateLink } from "@/lib/affiliate";
+import { marketplace } from "./client";
 
 export type NormalizedProduct = {
   asin: string;
@@ -18,31 +19,47 @@ export type NormalizedProduct = {
   fetchedAt: string;
 };
 
-// PA API payloads are large and mostly optional — stay defensive, never throw.
-export type PaapiItem = {
-  ASIN: string;
-  ItemInfo?: {
-    Title?: { DisplayValue?: string };
-    ByLineInfo?: { Brand?: { DisplayValue?: string }; Manufacturer?: { DisplayValue?: string } };
+// Creators API payloads are lowerCamelCase and mostly optional - stay defensive, never throw.
+type Money = { amount?: number; currency?: string; displayAmount?: string };
+
+export type CreatorsItem = {
+  asin?: string;
+  ASIN?: string;
+  parentASIN?: string;
+  detailPageURL?: string;
+  itemInfo?: {
+    title?: { displayValue?: string };
+    byLineInfo?: { brand?: { displayValue?: string }; manufacturer?: { displayValue?: string } };
   };
-  Images?: { Primary?: { Large?: { URL?: string } } };
-  Offers?: {
-    Listings?: Array<{
-      Price?: { Amount?: number; Currency?: string; Savings?: { Amount?: number; Percentage?: number } };
-      SavingBasis?: { Amount?: number };
-      Availability?: { Message?: string };
+  images?: { primary?: { large?: { url?: string }; medium?: { url?: string }; small?: { url?: string } } };
+  offersV2?: {
+    listings?: Array<{
+      price?: {
+        money?: Money;
+        savingBasis?: { money?: Money };
+        savings?: { money?: Money; percentage?: number };
+      };
+      availability?: { message?: string; type?: string };
+      isBuyBoxWinner?: boolean;
     }>;
   };
-  CustomerReviews?: { Count?: number; StarRating?: { Value?: number } };
+  customerReviews?: { count?: number; starRating?: { value?: number } };
 };
 
-export function normalizeItem(item: PaapiItem): NormalizedProduct {
-  const listing = item.Offers?.Listings?.[0];
-  const price = listing?.Price?.Amount ?? null;
-  const listPrice = listing?.SavingBasis?.Amount ?? null;
+/** Alias kept so existing imports (PaapiItem) keep compiling. */
+export type PaapiItem = CreatorsItem;
 
-  let savings = listing?.Price?.Savings?.Amount ?? null;
-  let discount = listing?.Price?.Savings?.Percentage ?? null;
+export function normalizeItem(item: CreatorsItem): NormalizedProduct {
+  const asin = (item.asin ?? item.ASIN ?? "").toUpperCase();
+  const listings = item.offersV2?.listings ?? [];
+  // Prefer the buy-box listing; that is the price the customer actually sees.
+  const listing = listings.find((l) => l.isBuyBoxWinner) ?? listings[0];
+
+  const price = listing?.price?.money?.amount ?? null;
+  const listPrice = listing?.price?.savingBasis?.money?.amount ?? null;
+
+  let savings = listing?.price?.savings?.money?.amount ?? null;
+  let discount = listing?.price?.savings?.percentage ?? null;
   if (savings == null && price != null && listPrice != null && listPrice > price) {
     savings = Math.round((listPrice - price) * 100) / 100;
   }
@@ -50,25 +67,31 @@ export function normalizeItem(item: PaapiItem): NormalizedProduct {
     discount = Math.round(((listPrice - price) / listPrice) * 100);
   }
 
-  const host = (process.env.AMAZON_HOST ?? "webservices.amazon.in").replace(/^webservices\./, "");
-  const standardLink = `https://www.${host}/dp/${item.ASIN}`;
+  const host = marketplace().replace(/^www\./, "");
+  const standardLink = item.detailPageURL
+    ? item.detailPageURL.split("?")[0]
+    : `https://www.${host}/dp/${asin}`;
 
   return {
-    asin: item.ASIN,
-    title: item.ItemInfo?.Title?.DisplayValue ?? null,
+    asin,
+    title: item.itemInfo?.title?.displayValue ?? null,
     brand:
-      item.ItemInfo?.ByLineInfo?.Brand?.DisplayValue ??
-      item.ItemInfo?.ByLineInfo?.Manufacturer?.DisplayValue ??
+      item.itemInfo?.byLineInfo?.brand?.displayValue ??
+      item.itemInfo?.byLineInfo?.manufacturer?.displayValue ??
       null,
-    image: item.Images?.Primary?.Large?.URL ?? null,
+    image:
+      item.images?.primary?.large?.url ??
+      item.images?.primary?.medium?.url ??
+      item.images?.primary?.small?.url ??
+      null,
     currentPrice: price,
-    currency: listing?.Price?.Currency ?? null,
+    currency: listing?.price?.money?.currency ?? null,
     listPrice,
     savingsAmount: savings,
     discountPercent: discount,
-    availability: listing?.Availability?.Message ?? null,
-    rating: item.CustomerReviews?.StarRating?.Value ?? null,
-    reviewCount: item.CustomerReviews?.Count ?? null,
+    availability: listing?.availability?.message ?? listing?.availability?.type ?? null,
+    rating: item.customerReviews?.starRating?.value ?? null,
+    reviewCount: item.customerReviews?.count ?? null,
     standardLink,
     // Reuses the site's single source of truth for the affiliate tag.
     affiliateLink: buildAmazonAffiliateLink(standardLink),

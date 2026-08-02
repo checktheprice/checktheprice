@@ -1,11 +1,12 @@
-import { paapiRequest } from "./client";
+import { creatorsRequest } from "./client";
 import { SEARCH_ITEMS_RESOURCES } from "./resources";
-import { normalizeItem, type NormalizedProduct, type PaapiItem } from "./normalize";
+import { normalizeItem, type NormalizedProduct, type CreatorsItem } from "./normalize";
 import { throttled, withRetry } from "./throttle";
 
-type PaapiSearchResponse = {
-  SearchResult?: { Items?: PaapiItem[]; TotalResultCount?: number };
-  Errors?: Array<{ Code: string; Message: string }>;
+type CreatorsSearchResponse = {
+  searchResult?: { items?: CreatorsItem[]; totalResultCount?: number };
+  SearchResult?: { Items?: CreatorsItem[]; TotalResultCount?: number };
+  errors?: Array<{ code?: string; message?: string }>;
 };
 
 export type SearchArgs = {
@@ -20,18 +21,19 @@ export async function searchItems(
 ): Promise<{ items: NormalizedProduct[]; totalResults?: number }> {
   const data = await throttled("SearchItems", () =>
     withRetry(() =>
-      paapiRequest<PaapiSearchResponse>("SearchItems", {
-        Keywords: args.keywords,
-        SearchIndex: args.searchIndex ?? "All",
-        ItemCount: Math.min(Math.max(args.itemCount ?? 10, 1), 10),
-        ItemPage: Math.min(Math.max(args.itemPage ?? 1, 1), 10),
-        Resources: SEARCH_ITEMS_RESOURCES,
+      creatorsRequest<CreatorsSearchResponse>("SearchItems", {
+        keywords: args.keywords,
+        searchIndex: args.searchIndex ?? "All",
+        itemCount: Math.min(Math.max(args.itemCount ?? 10, 1), 10),
+        itemPage: Math.min(Math.max(args.itemPage ?? 1, 1), 10),
+        resources: SEARCH_ITEMS_RESOURCES,
       }),
     ),
   );
 
+  const items = data.searchResult?.items ?? data.SearchResult?.Items ?? [];
   return {
-    items: (data.SearchResult?.Items ?? []).map(normalizeItem),
-    totalResults: data.SearchResult?.TotalResultCount,
+    items: items.map(normalizeItem),
+    totalResults: data.searchResult?.totalResultCount ?? data.SearchResult?.TotalResultCount,
   };
 }

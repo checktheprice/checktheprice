@@ -1,11 +1,11 @@
-// AWS SigV4 signer + POST for Amazon Product Advertising API v5.
+// Amazon Creators API client (replaces PA API v5 + AWS SigV4).
+// OAuth 2.0 client-credentials -> 1 hour bearer token -> POST /catalog/v1/*.
 // Server-only: never import this from client components.
-import { createHash, createHmac } from "node:crypto";
+import { createHash } from "node:crypto";
 
-export type PaapiOperation = "SearchItems" | "GetItems" | "GetVariations" | "BrowseNodes";
+export type CreatorsOperation = "SearchItems" | "GetItems" | "GetVariations" | "BrowseNodes";
 
-const SERVICE = "ProductAdvertisingAPI";
-const ALGO = "AWS4-HMAC-SHA256";
+const BASE_URL = "https://creatorsapi.amazon/catalog/v1";
 
 function env(name: string): string {
   const v = process.env[name];
@@ -13,102 +13,142 @@ function env(name: string): string {
   return v;
 }
 
-function sha256Hex(data: string): string {
-  return createHash("sha256").update(data, "utf8").digest("hex");
+/** e.g. "v3.2" -> "3.2" (the Authorization header wants the bare number). */
+function credentialVersion(): string {
+  const raw = process.env.AMAZON_CREDENTIAL_VERSION ?? "v3.2";
+  return raw.trim().replace(/^v/i, "");
 }
 
-function hmac(key: Buffer | string, data: string): Buffer {
-  return createHmac("sha256", key).update(data, "utf8").digest();
+export function marketplace(): string {
+  return process.env.AMAZON_MARKETPLACE ?? "www.amazon.in";
 }
 
-function amzDate(now = new Date()) {
-  const iso = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
-  return { amz: iso, date: iso.slice(0, 8) };
+/**
+ * Login with Amazon (v3.x) or Cognito (v2.x) token endpoint.
+ * Region is chosen by the credential Version; override with AMAZON_TOKEN_ENDPOINT.
+ */
+function tokenEndpoint(): string {
+  const override = process.env.AMAZON_TOKEN_ENDPOINT;
+  if (override) return override;
+
+  const version = credentialVersion();
+  const minor = version.split(".")[1] ?? "2";
+
+  if (version.startsWith("2")) {
+    const region = minor === "1" ? "us-east-1" : minor === "3" ? "us-west-2" : "eu-south-2";
+    return `https://creatorsapi.auth.${region}.amazoncognito.com/oauth2/token`;
+  }
+  // v3.x -> LWA regional endpoints: .1 = NA, .2 = EU (incl. IN), .3 = FE
+  const host = minor === "1" ? "api.amazon.com" : minor === "3" ? "api.amazon.co.jp" : "api.amazon.co.uk";
+  return `https://${host}/auth/o2/token`;
 }
 
-function targetHeader(op: PaapiOperation) {
-  return `com.amazon.paapi5.v1.ProductAdvertisingAPIv1.${op}`;
+type CachedToken = { token: string; expiresAt: number };
+let cachedToken: CachedToken | null = null;
+
+async function accessToken(): Promise<string> {
+  // 60s safety margin so a request never travels with a token that expires mid-flight.
+  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) return cachedToken.token;
+
+  const clientId = env("AMAZON_CREDENTIAL_ID");
+  const clientSecret = env("AMAZON_CREDENTIAL_SECRET");
+  const endpoint = tokenEndpoint();
+  const isCognito = endpoint.includes("amazoncognito.com");
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: isCognito
+      ? {
+          "content-type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+        }
+      : { "content-type": "application/json" },
+    body: isCognito
+      ? new URLSearchParams({ grant_type: "client_credentials", scope: "creatorsapi/default" }).toString()
+      : JSON.stringify({
+          grant_type: "client_credentials",
+          client_id: clientId,
+          client_secret: clientSecret,
+          scope: "creatorsapi::default",
+        }),
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    const err = new Error(`Creators API token ${res.status}: ${text.slice(0, 500)}`) as Error & {
+      status?: number;
+      retryable?: boolean;
+    };
+    err.status = res.status;
+    err.retryable = res.status === 429 || res.status >= 500;
+    throw err;
+  }
+
+  const data = JSON.parse(text) as { access_token?: string; expires_in?: number };
+  if (!data.access_token) throw new Error("Creators API token response had no access_token");
+
+  cachedToken = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000,
+  };
+  return cachedToken.token;
 }
 
-function pathFor(op: PaapiOperation) {
+function pathFor(op: CreatorsOperation): string {
   switch (op) {
     case "SearchItems":
-      return "/paapi5/searchitems";
+      return "/searchItems";
     case "GetItems":
-      return "/paapi5/getitems";
+      return "/getItems";
     case "GetVariations":
-      return "/paapi5/getvariations";
+      return "/getVariations";
     case "BrowseNodes":
-      return "/paapi5/getbrowsenodes";
+      return "/getBrowseNodes";
   }
 }
 
-export async function paapiRequest<T>(
-  op: PaapiOperation,
+export async function creatorsRequest<T>(
+  op: CreatorsOperation,
   payload: Record<string, unknown>,
 ): Promise<T> {
-  const accessKey = env("AMAZON_ACCESS_KEY");
-  const secretKey = env("AMAZON_SECRET_KEY");
-  const region = process.env.AMAZON_REGION ?? "eu-west-1";
-  const host = process.env.AMAZON_HOST ?? "webservices.amazon.in";
   const partnerTag = env("AMAZON_PARTNER_TAG");
+  const mp = marketplace();
+  const token = await accessToken();
 
   const body = JSON.stringify({
     ...payload,
-    PartnerTag: partnerTag,
-    PartnerType: "Associates",
-    Marketplace: `www.${host.replace(/^webservices\./, "")}`,
+    partnerTag,
+    partnerType: "Associates",
+    marketplace: mp,
   });
 
-  const { amz, date } = amzDate();
-  const path = pathFor(op);
-  const target = targetHeader(op);
-  const contentType = "application/json; charset=utf-8";
-
-  const canonicalHeaders =
-    `content-encoding:amz-1.0\n` +
-    `content-type:${contentType}\n` +
-    `host:${host}\n` +
-    `x-amz-date:${amz}\n` +
-    `x-amz-target:${target}\n`;
-  const signedHeaders = "content-encoding;content-type;host;x-amz-date;x-amz-target";
-
-  const canonicalRequest = ["POST", path, "", canonicalHeaders, signedHeaders, sha256Hex(body)].join("\n");
-  const credentialScope = `${date}/${region}/${SERVICE}/aws4_request`;
-  const stringToSign = [ALGO, amz, credentialScope, sha256Hex(canonicalRequest)].join("\n");
-
-  const kDate = hmac(`AWS4${secretKey}`, date);
-  const kRegion = hmac(kDate, region);
-  const kService = hmac(kRegion, SERVICE);
-  const kSigning = hmac(kService, "aws4_request");
-  const signature = createHmac("sha256", kSigning).update(stringToSign, "utf8").digest("hex");
-
-  const authorization = `${ALGO} Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-
-  const res = await fetch(`https://${host}${path}`, {
+  const res = await fetch(`${BASE_URL}${pathFor(op)}`, {
     method: "POST",
     headers: {
-      "content-encoding": "amz-1.0",
-      "content-type": contentType,
-      "x-amz-date": amz,
-      "x-amz-target": target,
-      Authorization: authorization,
+      Authorization: `Bearer ${token}, Version ${credentialVersion()}`,
+      "content-type": "application/json",
+      "x-marketplace": mp,
     },
     body,
   });
 
   const text = await res.text();
   if (!res.ok) {
-    const err = new Error(`PA API ${op} ${res.status}: ${text.slice(0, 500)}`) as Error & {
+    // 401 usually means the cached token went stale early - drop it so the retry re-mints.
+    if (res.status === 401) cachedToken = null;
+    const err = new Error(`Creators API ${op} ${res.status}: ${text.slice(0, 500)}`) as Error & {
       status?: number;
       retryable?: boolean;
     };
     err.status = res.status;
-    err.retryable = res.status === 429 || res.status === 503;
+    err.retryable = res.status === 429 || res.status === 401 || res.status >= 500;
     throw err;
   }
   return JSON.parse(text) as T;
 }
+
+/** Kept for backwards compatibility with existing imports. */
+export const paapiRequest = creatorsRequest;
 
 export function payloadHash(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
