@@ -547,6 +547,28 @@ function AdminPage() {
           />
         )}
 
+        {merchant === "flipkart" && (
+          <div>
+            <label className={labelCls}>
+              Flipkart Affiliate Link (Cuelinks) — optional
+            </label>
+            <input
+              type="url"
+              inputMode="url"
+              className={inputCls}
+              value={scraped.flipkartAffiliateLink}
+              onChange={(e) =>
+                setScraped({ ...scraped, flipkartAffiliateLink: e.target.value })
+              }
+              placeholder="https://linksredirect.com/?..."
+            />
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              Leave blank to temporarily use the original Flipkart product URL for
+              Grab Deal. Paste the Cuelinks URL once available.
+            </p>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={handleSave}
@@ -565,8 +587,9 @@ function AdminPage() {
           {publishing ? "Publishing…" : "Save to Website (Publish Live)"}
         </button>
         <p className="text-[11px] leading-snug text-muted-foreground">
-          Publishes instantly to the site database with your Amazon affiliate
-          tag <code>pavani15-21</code>. Independent of Google Sheets.
+          Publishes instantly to the site database. Amazon uses your affiliate tag{" "}
+          <code>pavani15-21</code>; Flipkart uses the Cuelinks link when provided,
+          otherwise the original Flipkart URL. Independent of Google Sheets.
         </p>
       </div>
     </main>
