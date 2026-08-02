@@ -25,6 +25,7 @@ import { Route as DealSlugRouteImport } from './routes/deal.$slug'
 import { Route as ApiAdminAmazonHydrateRouteImport } from './routes/api/admin/amazon-hydrate'
 import { Route as ApiAdminAmazonRefreshRouteImport } from './routes/api/admin/amazon-refresh'
 import { Route as ApiAdminAmazonSearchRouteImport } from './routes/api/admin/amazon-search'
+import { Route as ApiAdminAmazonVariationsRouteImport } from './routes/api/admin/amazon-variations'
 import { Route as ApiAdminFetchDetailsRouteImport } from './routes/api/admin/fetch-details'
 import { Route as ApiPublicAmazonDiagnosticsRouteImport } from './routes/api/public/amazon-diagnostics'
 import { Route as ApiPublicCronRefreshDealsRouteImport } from './routes/api/public/cron/refresh-deals'
@@ -109,6 +110,12 @@ const ApiAdminAmazonSearchRoute = ApiAdminAmazonSearchRouteImport.update({
   path: '/api/admin/amazon-search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminAmazonVariationsRoute =
+  ApiAdminAmazonVariationsRouteImport.update({
+    id: '/api/admin/amazon-variations',
+    path: '/api/admin/amazon-variations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAdminFetchDetailsRoute = ApiAdminFetchDetailsRouteImport.update({
   id: '/api/admin/fetch-details',
   path: '/api/admin/fetch-details',
@@ -144,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/amazon-hydrate': typeof ApiAdminAmazonHydrateRoute
   '/api/admin/amazon-refresh': typeof ApiAdminAmazonRefreshRoute
   '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
+  '/api/admin/amazon-variations': typeof ApiAdminAmazonVariationsRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
   '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
@@ -165,6 +173,7 @@ export interface FileRoutesByTo {
   '/api/admin/amazon-hydrate': typeof ApiAdminAmazonHydrateRoute
   '/api/admin/amazon-refresh': typeof ApiAdminAmazonRefreshRoute
   '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
+  '/api/admin/amazon-variations': typeof ApiAdminAmazonVariationsRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
   '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
@@ -187,6 +196,7 @@ export interface FileRoutesById {
   '/api/admin/amazon-hydrate': typeof ApiAdminAmazonHydrateRoute
   '/api/admin/amazon-refresh': typeof ApiAdminAmazonRefreshRoute
   '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
+  '/api/admin/amazon-variations': typeof ApiAdminAmazonVariationsRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
   '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/api/admin/amazon-hydrate'
     | '/api/admin/amazon-refresh'
     | '/api/admin/amazon-search'
+    | '/api/admin/amazon-variations'
     | '/api/admin/fetch-details'
     | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/api/admin/amazon-hydrate'
     | '/api/admin/amazon-refresh'
     | '/api/admin/amazon-search'
+    | '/api/admin/amazon-variations'
     | '/api/admin/fetch-details'
     | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
@@ -252,6 +264,7 @@ export interface FileRouteTypes {
     | '/api/admin/amazon-hydrate'
     | '/api/admin/amazon-refresh'
     | '/api/admin/amazon-search'
+    | '/api/admin/amazon-variations'
     | '/api/admin/fetch-details'
     | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
@@ -274,6 +287,7 @@ export interface RootRouteChildren {
   ApiAdminAmazonHydrateRoute: typeof ApiAdminAmazonHydrateRoute
   ApiAdminAmazonRefreshRoute: typeof ApiAdminAmazonRefreshRoute
   ApiAdminAmazonSearchRoute: typeof ApiAdminAmazonSearchRoute
+  ApiAdminAmazonVariationsRoute: typeof ApiAdminAmazonVariationsRoute
   ApiAdminFetchDetailsRoute: typeof ApiAdminFetchDetailsRoute
   ApiPublicAmazonDiagnosticsRoute: typeof ApiPublicAmazonDiagnosticsRoute
   ApiPublicCronRefreshDealsRoute: typeof ApiPublicCronRefreshDealsRoute
@@ -393,6 +407,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAmazonSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/amazon-variations': {
+      id: '/api/admin/amazon-variations'
+      path: '/api/admin/amazon-variations'
+      fullPath: '/api/admin/amazon-variations'
+      preLoaderRoute: typeof ApiAdminAmazonVariationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/fetch-details': {
       id: '/api/admin/fetch-details'
       path: '/api/admin/fetch-details'
@@ -434,6 +455,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminAmazonHydrateRoute: ApiAdminAmazonHydrateRoute,
   ApiAdminAmazonRefreshRoute: ApiAdminAmazonRefreshRoute,
   ApiAdminAmazonSearchRoute: ApiAdminAmazonSearchRoute,
+  ApiAdminAmazonVariationsRoute: ApiAdminAmazonVariationsRoute,
   ApiAdminFetchDetailsRoute: ApiAdminFetchDetailsRoute,
   ApiPublicAmazonDiagnosticsRoute: ApiPublicAmazonDiagnosticsRoute,
   ApiPublicCronRefreshDealsRoute: ApiPublicCronRefreshDealsRoute,
@@ -441,3 +463,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
