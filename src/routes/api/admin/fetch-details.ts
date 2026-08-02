@@ -187,7 +187,7 @@ async function scrapeWithFallback(
     const reason =
       lastError instanceof Error ? lastError.message : String(lastError);
     throw new Error(
-      `amazon.in scrape failed after proxy fallback (CAPTCHA or fetch error): ${reason}`,
+      `scrape failed after proxy fallback (CAPTCHA or fetch error): ${reason}`,
     );
   }
 
