@@ -187,7 +187,7 @@ async function scrapeWithFallback(
     const reason =
       lastError instanceof Error ? lastError.message : String(lastError);
     throw new Error(
-      `amazon.in scrape failed after proxy fallback (CAPTCHA or fetch error): ${reason}`,
+      `scrape failed after proxy fallback (CAPTCHA or fetch error): ${reason}`,
     );
   }
 
@@ -249,24 +249,46 @@ export const Route = createFileRoute("/api/admin/fetch-details")({
         }
 
         const host = target.hostname.toLowerCase();
-        if (host !== "amazon.in" && !host.endsWith(".amazon.in")) {
+        const isAmazon = host === "amazon.in" || host.endsWith(".amazon.in");
+        const isFlipkart =
+          host === "flipkart.com" || host.endsWith(".flipkart.com");
+        if (!isAmazon && !isFlipkart) {
           return jsonResponse(
-            { error: `Not an amazon.in URL: ${rawUrl}` },
+            { error: `Not an amazon.in or flipkart.com URL: ${rawUrl}` },
             400,
           );
         }
 
-        const asin = extractAsin(target);
-        if (!asin) {
-          return jsonResponse(
-            {
-              error: `Not an amazon.in product page URL (no ASIN found in path): ${rawUrl}`,
-            },
-            400,
-          );
-        }
+        const merchant: "amazon" | "flipkart" = isAmazon ? "amazon" : "flipkart";
 
-        const standardLink = `https://www.amazon.in/dp/${asin}`;
+        const { flipkartStandardLink, extractFlipkartProduct } = await import(
+          "@/lib/scrape/flipkart.server"
+        );
+
+        let standardLink: string;
+        if (merchant === "amazon") {
+          const asin = extractAsin(target);
+          if (!asin) {
+            return jsonResponse(
+              {
+                error: `Not an amazon.in product page URL (no ASIN found in path): ${rawUrl}`,
+              },
+              400,
+            );
+          }
+          standardLink = `https://www.amazon.in/dp/${asin}`;
+        } else {
+          const fk = flipkartStandardLink(target);
+          if (!fk) {
+            return jsonResponse(
+              {
+                error: `Not a flipkart.com product page URL (no /p/<itemId> in path): ${rawUrl}`,
+              },
+              400,
+            );
+          }
+          standardLink = fk;
+        }
 
         // --- Firecrawl scrape ------------------------------------------------
         const firecrawl = new Firecrawl({ apiKey });
@@ -286,7 +308,10 @@ export const Route = createFileRoute("/api/admin/fetch-details")({
         }
 
         // --- Extract product fields (verbatim from script.ts) ----------------
-        const p = extractProduct(html);
+        const p =
+          merchant === "amazon"
+            ? extractProduct(html)
+            : extractFlipkartProduct(html);
 
         const missing: string[] = [];
         if (!p.title) missing.push("title");
@@ -296,7 +321,7 @@ export const Route = createFileRoute("/api/admin/fetch-details")({
         if (missing.length > 0) {
           return jsonResponse(
             {
-              error: `Required product fields could not be extracted from the amazon.in page (${missing.join(", ")}). The page layout may have changed or the product may be unavailable.`,
+              error: `Required product fields could not be extracted from the ${merchant === "amazon" ? "amazon.in" : "flipkart.com"} page (${missing.join(", ")}). The page layout may have changed or the product may be unavailable.`,
             },
             422,
           );
@@ -304,6 +329,7 @@ export const Route = createFileRoute("/api/admin/fetch-details")({
 
         // --- Response (identical fields to script.ts stdout) -----------------
         return jsonResponse({
+          merchant,
           standard_link: standardLink,
           title: p.title,
           category: p.category,

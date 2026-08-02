@@ -4,6 +4,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { buildAmazonAffiliateLink } from "@/lib/affiliate";
 import { calcDiscount } from "@/lib/deals";
+import {
+  type Merchant,
+  buildMerchantAffiliateLink,
+  detectMerchant,
+  merchantLabel,
+} from "@/lib/merchant";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -23,6 +29,8 @@ type Scraped = {
   mrp: string;
   image: string;
   updated: string;
+  /** Optional Cuelinks affiliate URL — Flipkart only. */
+  flipkartAffiliateLink: string;
 };
 
 const LS_KEY = "ctp_admin_config_v1";
@@ -41,6 +49,7 @@ const emptyScraped: Scraped = {
   mrp: "",
   image: "",
   updated: "",
+  flipkartAffiliateLink: "",
 };
 
 function formatISTTimestamp(d: Date): string {
@@ -104,6 +113,7 @@ function AdminPage() {
   });
   const [url, setUrl] = useState("");
   const [scraped, setScraped] = useState<Scraped>(emptyScraped);
+  const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -129,7 +139,15 @@ function AdminPage() {
   async function handleFetch() {
     setMsg(null);
     if (!url.trim()) {
-      setMsg({ type: "err", text: "Paste an Amazon product URL first." });
+      setMsg({ type: "err", text: "Paste an Amazon or Flipkart product URL first." });
+      return;
+    }
+    const detected = detectMerchant(url);
+    if (!detected) {
+      setMsg({
+        type: "err",
+        text: "Unsupported URL. Paste an amazon.in or flipkart.com product URL.",
+      });
       return;
     }
     if (!config.firecrawlKey.trim()) {
@@ -156,6 +174,7 @@ function AdminPage() {
       if (!j?.title || !j?.price || !j?.image) {
         throw new Error("Fetched product details are missing title, price, or image.");
       }
+      setMerchant((j.merchant === "flipkart" ? "flipkart" : "amazon") as Merchant);
       setScraped({
         title: String(j.title ?? ""),
         category: String(j.category ?? ""),
@@ -163,10 +182,12 @@ function AdminPage() {
         mrp: j.mrp != null ? String(j.mrp) : "",
         image: String(j.image ?? ""),
         updated: String(j.updated || formatISTTimestamp(new Date())),
+        flipkartAffiliateLink: "",
       });
       setMsg({ type: "ok", text: "Fetched. Review & edit, then save." });
     } catch (e) {
       setScraped(emptyScraped);
+      setMerchant(null);
       setMsg({ type: "err", text: `Fetch failed: ${(e as Error).message}` });
     } finally {
       setLoading(false);
@@ -203,7 +224,17 @@ function AdminPage() {
           category: scraped.category,
           price: scraped.price,
           mrp: scraped.mrp,
-          affiliate_link: "",
+          // Amazon rows keep the existing behaviour (blank — the site appends
+          // the Associates tag). Flipkart rows carry the Cuelinks link, or the
+          // plain product URL as a temporary fallback.
+          affiliate_link:
+            merchant === "flipkart"
+              ? buildMerchantAffiliateLink(
+                  "flipkart",
+                  url.trim(),
+                  scraped.flipkartAffiliateLink,
+                )
+              : "",
           image: scraped.image,
           Duplicate: "",
           updated: scraped.updated,
@@ -227,6 +258,7 @@ function AdminPage() {
       setMsg({ type: "ok", text: "Saved to Sheet 2 ✅" });
       setUrl("");
       setScraped(emptyScraped);
+      setMerchant(null);
     } catch (e) {
       setMsg({ type: "err", text: `Save failed: ${(e as Error).message}` });
     } finally {
@@ -250,12 +282,16 @@ function AdminPage() {
       return;
     }
     if (!url.trim()) {
-      setMsg({ type: "err", text: "Amazon product URL is required." });
+      setMsg({ type: "err", text: "Product URL is required." });
       return;
     }
     setPublishing(true);
     try {
-      const affiliate = buildAmazonAffiliateLink(url.trim());
+      const m: Merchant = merchant ?? detectMerchant(url) ?? "amazon";
+      const affiliate =
+        m === "amazon"
+          ? buildAmazonAffiliateLink(url.trim())
+          : buildMerchantAffiliateLink(m, url.trim(), scraped.flipkartAffiliateLink);
       const discount = calcDiscount(mrpNum, priceNum);
       const { data: userData } = await supabase.auth.getUser();
       const { error } = await supabase.from("deals").insert({
@@ -265,7 +301,7 @@ function AdminPage() {
         price: priceNum,
         mrp: mrpNum,
         discount_percentage: discount,
-        source: "Amazon",
+        source: merchantLabel(m),
         standard_link: url.trim(),
         affiliate_link: affiliate,
         coupon_code: null,
@@ -280,6 +316,7 @@ function AdminPage() {
       });
       setUrl("");
       setScraped(emptyScraped);
+      setMerchant(null);
     } catch (e) {
       setMsg({
         type: "err",
@@ -325,7 +362,8 @@ function AdminPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Mobile Admin</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Scrape an Amazon product, then publish to the website or append to Sheet 2.
+            Scrape an Amazon or Flipkart product, then publish to the website or
+            append to Sheet 2.
           </p>
           {adminEmail && (
             <p className="mt-1 text-[11px] text-muted-foreground">
@@ -435,15 +473,26 @@ function AdminPage() {
       </div>
 
       <div className="mt-4 space-y-2">
-        <label className={labelCls}>Amazon Product URL</label>
+        <label className={labelCls}>Amazon or Flipkart Product URL</label>
         <input
           type="url"
           inputMode="url"
           className={inputCls}
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://www.amazon.in/dp/..."
+          onChange={(e) => {
+            setUrl(e.target.value);
+            setMerchant(detectMerchant(e.target.value));
+          }}
+          placeholder="https://www.amazon.in/dp/... or https://www.flipkart.com/.../p/itm..."
         />
+        {url.trim() !== "" && (
+          <p className="text-[11px] text-muted-foreground">
+            Merchant:{" "}
+            <span className="font-semibold text-foreground">
+              {merchant ? merchantLabel(merchant) : "unsupported URL"}
+            </span>
+          </p>
+        )}
         <button
           type="button"
           onClick={handleFetch}
@@ -498,6 +547,28 @@ function AdminPage() {
           />
         )}
 
+        {merchant === "flipkart" && (
+          <div>
+            <label className={labelCls}>
+              Flipkart Affiliate Link (Cuelinks) — optional
+            </label>
+            <input
+              type="url"
+              inputMode="url"
+              className={inputCls}
+              value={scraped.flipkartAffiliateLink}
+              onChange={(e) =>
+                setScraped({ ...scraped, flipkartAffiliateLink: e.target.value })
+              }
+              placeholder="https://linksredirect.com/?..."
+            />
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              Leave blank to temporarily use the original Flipkart product URL for
+              Grab Deal. Paste the Cuelinks URL once available.
+            </p>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={handleSave}
@@ -516,8 +587,9 @@ function AdminPage() {
           {publishing ? "Publishing…" : "Save to Website (Publish Live)"}
         </button>
         <p className="text-[11px] leading-snug text-muted-foreground">
-          Publishes instantly to the site database with your Amazon affiliate
-          tag <code>pavani15-21</code>. Independent of Google Sheets.
+          Publishes instantly to the site database. Amazon uses your affiliate tag{" "}
+          <code>pavani15-21</code>; Flipkart uses the Cuelinks link when provided,
+          otherwise the original Flipkart URL. Independent of Google Sheets.
         </p>
       </div>
     </main>
