@@ -113,6 +113,7 @@ function AdminPage() {
   });
   const [url, setUrl] = useState("");
   const [scraped, setScraped] = useState<Scraped>(emptyScraped);
+  const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -138,7 +139,15 @@ function AdminPage() {
   async function handleFetch() {
     setMsg(null);
     if (!url.trim()) {
-      setMsg({ type: "err", text: "Paste an Amazon product URL first." });
+      setMsg({ type: "err", text: "Paste an Amazon or Flipkart product URL first." });
+      return;
+    }
+    const detected = detectMerchant(url);
+    if (!detected) {
+      setMsg({
+        type: "err",
+        text: "Unsupported URL. Paste an amazon.in or flipkart.com product URL.",
+      });
       return;
     }
     if (!config.firecrawlKey.trim()) {
@@ -165,6 +174,7 @@ function AdminPage() {
       if (!j?.title || !j?.price || !j?.image) {
         throw new Error("Fetched product details are missing title, price, or image.");
       }
+      setMerchant((j.merchant === "flipkart" ? "flipkart" : "amazon") as Merchant);
       setScraped({
         title: String(j.title ?? ""),
         category: String(j.category ?? ""),
@@ -172,10 +182,12 @@ function AdminPage() {
         mrp: j.mrp != null ? String(j.mrp) : "",
         image: String(j.image ?? ""),
         updated: String(j.updated || formatISTTimestamp(new Date())),
+        flipkartAffiliateLink: "",
       });
       setMsg({ type: "ok", text: "Fetched. Review & edit, then save." });
     } catch (e) {
       setScraped(emptyScraped);
+      setMerchant(null);
       setMsg({ type: "err", text: `Fetch failed: ${(e as Error).message}` });
     } finally {
       setLoading(false);
