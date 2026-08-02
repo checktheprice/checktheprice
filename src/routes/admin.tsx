@@ -282,12 +282,16 @@ function AdminPage() {
       return;
     }
     if (!url.trim()) {
-      setMsg({ type: "err", text: "Amazon product URL is required." });
+      setMsg({ type: "err", text: "Product URL is required." });
       return;
     }
     setPublishing(true);
     try {
-      const affiliate = buildAmazonAffiliateLink(url.trim());
+      const m: Merchant = merchant ?? detectMerchant(url) ?? "amazon";
+      const affiliate =
+        m === "amazon"
+          ? buildAmazonAffiliateLink(url.trim())
+          : buildMerchantAffiliateLink(m, url.trim(), scraped.flipkartAffiliateLink);
       const discount = calcDiscount(mrpNum, priceNum);
       const { data: userData } = await supabase.auth.getUser();
       const { error } = await supabase.from("deals").insert({
@@ -297,7 +301,7 @@ function AdminPage() {
         price: priceNum,
         mrp: mrpNum,
         discount_percentage: discount,
-        source: "Amazon",
+        source: merchantLabel(m),
         standard_link: url.trim(),
         affiliate_link: affiliate,
         coupon_code: null,
@@ -312,6 +316,7 @@ function AdminPage() {
       });
       setUrl("");
       setScraped(emptyScraped);
+      setMerchant(null);
     } catch (e) {
       setMsg({
         type: "err",
