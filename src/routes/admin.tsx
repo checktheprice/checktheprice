@@ -362,7 +362,8 @@ function AdminPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Mobile Admin</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Scrape an Amazon product, then publish to the website or append to Sheet 2.
+            Scrape an Amazon or Flipkart product, then publish to the website or
+            append to Sheet 2.
           </p>
           {adminEmail && (
             <p className="mt-1 text-[11px] text-muted-foreground">
@@ -472,15 +473,26 @@ function AdminPage() {
       </div>
 
       <div className="mt-4 space-y-2">
-        <label className={labelCls}>Amazon Product URL</label>
+        <label className={labelCls}>Amazon or Flipkart Product URL</label>
         <input
           type="url"
           inputMode="url"
           className={inputCls}
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://www.amazon.in/dp/..."
+          onChange={(e) => {
+            setUrl(e.target.value);
+            setMerchant(detectMerchant(e.target.value));
+          }}
+          placeholder="https://www.amazon.in/dp/... or https://www.flipkart.com/.../p/itm..."
         />
+        {url.trim() !== "" && (
+          <p className="text-[11px] text-muted-foreground">
+            Merchant:{" "}
+            <span className="font-semibold text-foreground">
+              {merchant ? merchantLabel(merchant) : "unsupported URL"}
+            </span>
+          </p>
+        )}
         <button
           type="button"
           onClick={handleFetch}
