@@ -4,6 +4,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { buildAmazonAffiliateLink } from "@/lib/affiliate";
 import { calcDiscount } from "@/lib/deals";
+import {
+  type Merchant,
+  buildMerchantAffiliateLink,
+  detectMerchant,
+  merchantLabel,
+} from "@/lib/merchant";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -23,6 +29,8 @@ type Scraped = {
   mrp: string;
   image: string;
   updated: string;
+  /** Optional Cuelinks affiliate URL — Flipkart only. */
+  flipkartAffiliateLink: string;
 };
 
 const LS_KEY = "ctp_admin_config_v1";
@@ -41,6 +49,7 @@ const emptyScraped: Scraped = {
   mrp: "",
   image: "",
   updated: "",
+  flipkartAffiliateLink: "",
 };
 
 function formatISTTimestamp(d: Date): string {
