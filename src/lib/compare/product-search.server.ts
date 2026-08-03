@@ -15,6 +15,10 @@ import {
   serpApiImmersiveProduct,
   type SerpShoppingResult,
 } from "./serpapi.server";
+import {
+  detectMerchantUrl,
+  scrapeProduct,
+} from "@/lib/scrape/firecrawl.server";
 
 /** Max parallel merchant-link resolutions per search. */
 const MAX_LINK_RESOLUTIONS = 10;
@@ -129,7 +133,15 @@ function titleFromSlug(u: URL): string | null {
   return text.length > 3 ? text.slice(0, 120) : null;
 }
 
-/** Best-effort product title extraction from a merchant product URL. */
+/**
+ * Best-effort product title extraction from a merchant product URL.
+ *
+ * For Amazon.in and Flipkart.com URLs the shared Firecrawl scraper (the same
+ * module the Admin import workflow uses) is tried first — it handles CAPTCHA
+ * pages and proxy fallback that a raw fetch cannot. If Firecrawl is not
+ * configured or the scrape fails, the raw-fetch fallback is used so existing
+ * behaviour is preserved for non-Firecrawl deployments.
+ */
 export async function resolveTitleFromUrl(
   rawUrl: string,
 ): Promise<string | null> {
@@ -140,6 +152,19 @@ export async function resolveTitleFromUrl(
     return null;
   }
 
+  // 1. Try the shared Firecrawl scraper for Amazon/Flipkart product URLs.
+  if (detectMerchantUrl(rawUrl) && process.env.FIRECRAWL_API_KEY) {
+    try {
+      const product = await scrapeProduct(rawUrl);
+      if (product.title && product.title.length > 3) {
+        return product.title.slice(0, 160);
+      }
+    } catch (e) {
+      console.error("[compare] firecrawl title extraction failed", e);
+    }
+  }
+
+  // 2. Fallback: raw fetch + regex parse (original behaviour).
   try {
     const res = await fetch(u.toString(), {
       headers: {
@@ -152,13 +177,13 @@ export async function resolveTitleFromUrl(
       const html = await res.text();
       const og =
         html.match(
-          /<meta[^>]+property=[\"']og:title[\"'][^>]+content=[\"']([^\"']+)[\"']/i,
+          /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
         ) ??
         html.match(
-          /<meta[^>]+content=[\"']([^\"']+)[\"'][^>]+property=[\"']og:title[\"']/i,
+          /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i,
         );
       const idTitle = html.match(
-        /id=[\"']productTitle[\"'][^>]*>([\s\S]{3,300}?)</i,
+        /id=["']productTitle["'][^>]*>([\s\S]{3,300}?)</i,
       );
       const docTitle = html.match(/<title[^>]*>([\s\S]{3,300}?)<\/title>/i);
       const raw = og?.[1] ?? idTitle?.[1] ?? docTitle?.[1];
