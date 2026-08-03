@@ -2,16 +2,119 @@
  * Product search service (server only).
  * Turns a user query (product name OR Amazon/Flipkart product URL) into a
  * sorted, affiliate-aware list of comparison offers.
+ *
+ * Buy links NEVER point at a Google Shopping redirect: every offer must carry a
+ * real merchant product URL, resolved through the Google Immersive Product API
+ * when the search result only exposes a Google link.
  */
 import { buildCompareBuyLink, resolveMerchant } from "./merchants";
 import type { CompareOffer, CompareResult } from "./types";
 import {
+  collectStoreEntries,
   serpApiGoogleShopping,
+  serpApiImmersiveProduct,
   type SerpShoppingResult,
 } from "./serpapi.server";
 
+/** Max parallel merchant-link resolutions per search. */
+const MAX_LINK_RESOLUTIONS = 10;
+
 function isUrl(input: string): boolean {
   return /^https?:\/\//i.test(input.trim());
+}
+
+/** True for Google-owned URLs (search, shopping redirects, /url?q= wrappers). */
+export function isGoogleUrl(raw: string | null | undefined): boolean {
+  if (!raw) return true;
+  try {
+    const host = new URL(raw).hostname.toLowerCase().replace(/^www\./, "");
+    return (
+      host === "google.com" ||
+      host.startsWith("google.") ||
+      host.endsWith(".google.com") ||
+      /(^|\.)google\.[a-z.]+$/.test(host) ||
+      host.endsWith("gstatic.com") ||
+      host.endsWith("googleusercontent.com")
+    );
+  } catch {
+    return true;
+  }
+}
+
+/** Unwrap https://www.google.com/url?q=<merchant url> style redirects. */
+export function unwrapGoogleRedirect(raw: string): string {
+  try {
+    const u = new URL(raw);
+    for (const key of ["q", "url", "adurl", "u"]) {
+      const v = u.searchParams.get(key);
+      if (v && /^https?:\/\//i.test(v) && !isGoogleUrl(v)) return v;
+    }
+  } catch {
+    /* ignore */
+  }
+  return raw;
+}
+
+/** First usable non-Google merchant URL directly present on the result. */
+function directMerchantUrl(r: SerpShoppingResult): string | null {
+  const candidates = [r.direct_link, r.link, r.product_link]
+    .map((c) => (c ?? "").trim())
+    .filter(Boolean)
+    .map(unwrapGoogleRedirect);
+  return candidates.find((c) => !isGoogleUrl(c)) ?? null;
+}
+
+function immersiveToken(r: SerpShoppingResult): string | null {
+  if (r.immersive_product_page_token) return r.immersive_product_page_token;
+  const api = r.serpapi_immersive_product_api;
+  if (!api) return null;
+  try {
+    return new URL(api).searchParams.get("page_token");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve the real merchant product URL for a Google Shopping result.
+ * Returns null when no non-Google URL can be found.
+ */
+async function resolveMerchantUrl(
+  r: SerpShoppingResult,
+): Promise<string | null> {
+  const direct = directMerchantUrl(r);
+  if (direct) return direct;
+
+  const token = immersiveToken(r);
+  if (!token) return null;
+
+  const body = await serpApiImmersiveProduct(token);
+  if (body.error) return null;
+
+  const entries = collectStoreEntries(body);
+  const wantedStore = (r.source ?? "").toLowerCase().trim();
+
+  const urls = entries.map((s) => {
+    const link = (s.direct_link || s.link || s.base_link || "").trim();
+    return {
+      name: (s.name || s.merchant || "").toLowerCase(),
+      url: link ? unwrapGoogleRedirect(link) : "",
+    };
+  });
+
+  // Prefer the entry that matches the store reported by the search result.
+  const matched = urls.find(
+    (s) =>
+      s.url &&
+      !isGoogleUrl(s.url) &&
+      wantedStore.length > 0 &&
+      s.name.length > 0 &&
+      (s.name.includes(wantedStore) || wantedStore.includes(s.name)),
+  );
+  if (matched) return matched.url;
+
+  const any = urls.find((s) => s.url && !isGoogleUrl(s.url));
+  return any?.url ?? null;
 }
 
 function titleFromSlug(u: URL): string | null {
@@ -27,7 +130,9 @@ function titleFromSlug(u: URL): string | null {
 }
 
 /** Best-effort product title extraction from a merchant product URL. */
-export async function resolveTitleFromUrl(rawUrl: string): Promise<string | null> {
+export async function resolveTitleFromUrl(
+  rawUrl: string,
+): Promise<string | null> {
   let u: URL;
   try {
     u = new URL(rawUrl.trim());
@@ -47,13 +152,13 @@ export async function resolveTitleFromUrl(rawUrl: string): Promise<string | null
       const html = await res.text();
       const og =
         html.match(
-          /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
+          /<meta[^>]+property=[\"']og:title[\"'][^>]+content=[\"']([^\"']+)[\"']/i,
         ) ??
         html.match(
-          /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i,
+          /<meta[^>]+content=[\"']([^\"']+)[\"'][^>]+property=[\"']og:title[\"']/i,
         );
       const idTitle = html.match(
-        /id=["']productTitle["'][^>]*>([\s\S]{3,300}?)</i,
+        /id=[\"']productTitle[\"'][^>]*>([\s\S]{3,300}?)</i,
       );
       const docTitle = html.match(/<title[^>]*>([\s\S]{3,300}?)<\/title>/i);
       const raw = og?.[1] ?? idTitle?.[1] ?? docTitle?.[1];
@@ -67,7 +172,11 @@ export async function resolveTitleFromUrl(rawUrl: string): Promise<string | null
           "",
         )
         .trim();
-      if (cleaned && cleaned.length > 3 && !/robot check|captcha/i.test(cleaned)) {
+      if (
+        cleaned &&
+        cleaned.length > 3 &&
+        !/robot check|captcha/i.test(cleaned)
+      ) {
         return cleaned.slice(0, 160);
       }
     }
@@ -78,10 +187,13 @@ export async function resolveTitleFromUrl(rawUrl: string): Promise<string | null
   return titleFromSlug(u);
 }
 
-function toOffer(r: SerpShoppingResult): CompareOffer | null {
-  const url = (r.product_link || r.link || "").trim();
+function toOffer(
+  r: SerpShoppingResult,
+  merchantUrl: string,
+): CompareOffer | null {
+  const url = merchantUrl.trim();
   const title = (r.title ?? "").trim();
-  if (!url || !title) return null;
+  if (!url || !title || isGoogleUrl(url)) return null;
 
   const { slug, label } = resolveMerchant(url, r.source);
   const price =
@@ -100,6 +212,8 @@ function toOffer(r: SerpShoppingResult): CompareOffer | null {
     offer: r.tag ?? r.badge ?? null,
     image: r.thumbnail ?? null,
     url,
+    // Amazon -> Associates link, Flipkart -> Cuelinks when configured,
+    // everything else -> the direct merchant product URL.
     buyUrl: buildCompareBuyLink(slug, url),
     rating: typeof r.rating === "number" ? r.rating : null,
     reviews: typeof r.reviews === "number" ? r.reviews : null,
@@ -140,12 +254,22 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
     ...(res.shopping_results ?? []),
     ...(res.inline_shopping_results ?? []),
     ...(res.immersive_products ?? []),
-  ];
-  
-console.log("SerpApi first result:", JSON.stringify(raw[0], null, 2));
+  ].filter((r) => (r.title ?? "").trim().length > 0);
+
+  // Results that already expose a merchant URL need no extra API call.
+  const withDirect = raw.filter((r) => directMerchantUrl(r) !== null);
+  const needsLookup = raw
+    .filter((r) => directMerchantUrl(r) === null && immersiveToken(r) !== null)
+    .slice(0, MAX_LINK_RESOLUTIONS);
+
+  const resolved = await Promise.all([
+    ...withDirect.map((r) => ({ r, url: directMerchantUrl(r) })),
+    ...needsLookup.map(async (r) => ({ r, url: await resolveMerchantUrl(r) })),
+  ]);
+
   const seen = new Set<string>();
-  const offers = raw
-    .map(toOffer)
+  const offers = resolved
+    .map(({ r, url }) => (url ? toOffer(r, url) : null))
     .filter((o): o is CompareOffer => o !== null)
     .filter((o) => {
       const key = `${o.merchant}|${o.price ?? "na"}|${o.title.toLowerCase()}`;

@@ -8,6 +8,7 @@ export type SerpShoppingResult = {
   title?: string;
   link?: string;
   product_link?: string;
+  direct_link?: string;
   source?: string;
   source_icon?: string;
   price?: string;
@@ -21,6 +22,9 @@ export type SerpShoppingResult = {
   rating?: number;
   reviews?: number;
   store_rating?: number;
+  /** Token used by the Google Immersive Product API to resolve merchant URLs. */
+  immersive_product_page_token?: string;
+  serpapi_immersive_product_api?: string;
 };
 
 export type SerpShoppingResponse = {
@@ -28,6 +32,28 @@ export type SerpShoppingResponse = {
   shopping_results?: SerpShoppingResult[];
   inline_shopping_results?: SerpShoppingResult[];
   immersive_products?: SerpShoppingResult[];
+};
+
+/** Minimal shape of a store/seller entry across SerpApi product endpoints. */
+export type SerpStoreEntry = {
+  name?: string;
+  merchant?: string;
+  link?: string;
+  direct_link?: string;
+  base_link?: string;
+  price?: string;
+  extracted_price?: number;
+};
+
+export type SerpImmersiveProductResponse = {
+  error?: string;
+  product_results?: {
+    stores?: SerpStoreEntry[];
+    sellers_results?: { online_sellers?: SerpStoreEntry[] };
+    link?: string;
+  };
+  stores?: SerpStoreEntry[];
+  sellers_results?: { online_sellers?: SerpStoreEntry[] };
 };
 
 const SERPAPI_ENDPOINT = "https://serpapi.com/search.json";
@@ -78,4 +104,57 @@ export async function serpApiGoogleShopping(
     console.error("[serpapi] network error", e);
     return { error: "Could not reach the price provider. Please try again." };
   }
+}
+
+/**
+ * Google Immersive Product API — used to resolve the real merchant product URL
+ * for a Google Shopping result whose product_link is a Google redirect.
+ */
+export async function serpApiImmersiveProduct(
+  pageToken: string,
+): Promise<SerpImmersiveProductResponse> {
+  const apiKey = process.env["SERPAPI_API_KEY"];
+  if (!apiKey) return { error: "SERPAPI_API_KEY is not configured." };
+
+  const url = new URL(SERPAPI_ENDPOINT);
+  url.searchParams.set("engine", "google_immersive_product");
+  url.searchParams.set("page_token", pageToken);
+  url.searchParams.set("gl", "in");
+  url.searchParams.set("hl", "en");
+  url.searchParams.set("google_domain", "google.co.in");
+  url.searchParams.set("currency", "INR");
+  url.searchParams.set("api_key", apiKey);
+
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { accept: "application/json" },
+    });
+    const body = (await res.json().catch(() => null)) as
+      | SerpImmersiveProductResponse
+      | null;
+    if (!res.ok) {
+      console.error(
+        "[serpapi] immersive product failed",
+        res.status,
+        body?.error,
+      );
+      return { error: "Could not resolve the merchant link." };
+    }
+    return body ?? { error: "Empty response from the price provider." };
+  } catch (e) {
+    console.error("[serpapi] immersive product network error", e);
+    return { error: "Could not resolve the merchant link." };
+  }
+}
+
+/** Collect every store/seller entry from an immersive product response. */
+export function collectStoreEntries(
+  body: SerpImmersiveProductResponse,
+): SerpStoreEntry[] {
+  return [
+    ...(body.product_results?.stores ?? []),
+    ...(body.product_results?.sellers_results?.online_sellers ?? []),
+    ...(body.stores ?? []),
+    ...(body.sellers_results?.online_sellers ?? []),
+  ];
 }

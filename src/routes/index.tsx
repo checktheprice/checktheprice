@@ -19,6 +19,7 @@ import {
   discountRangeLabel,
 } from "@/lib/discount-ranges";
 import { Link } from "@tanstack/react-router";
+import { ComparePricesSection } from "@/components/ComparePricesSection";
 
 const dealsQueryOptions = queryOptions({
   queryKey: ["deals"],
@@ -204,6 +205,9 @@ function Index() {
           </div>
         </div>
       </header>
+
+      {/* Shared price comparison tool (same component as /compare) */}
+      <ComparePricesSection />
 
       {/* Filters - Horizontal scroll */}
       <section
