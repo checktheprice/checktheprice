@@ -141,7 +141,8 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
     ...(res.inline_shopping_results ?? []),
     ...(res.immersive_products ?? []),
   ];
-
+  
+console.log("SerpApi first result:", JSON.stringify(raw[0], null, 2));
   const seen = new Set<string>();
   const offers = raw
     .map(toOffer)
