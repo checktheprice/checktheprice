@@ -132,6 +132,14 @@ export function Navbar() {
           </li>
           <li>
             <Link
+              to="/compare"
+              className="rounded-md px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+            >
+              Compare Prices
+            </Link>
+          </li>
+          <li>
+            <Link
               to="/contact"
               className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
             >
@@ -179,6 +187,15 @@ export function Navbar() {
                 className="block rounded-md px-2 py-2 text-sm font-medium text-foreground/90 hover:bg-muted"
               >
                 Categories
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/compare"
+                onClick={() => setOpen(false)}
+                className="block rounded-md px-2 py-2 text-sm font-semibold text-primary hover:bg-primary/10"
+              >
+                Compare Prices
               </Link>
             </li>
             <li>
