@@ -160,7 +160,9 @@ function DealPage() {
 
   if (!deal || !seo) return <DealNotFound />;
 
-  const marketplace = getMarketplace(deal.affiliateLink) ?? getMarketplace(deal.source);
+  const marketplace = getMarketplace(deal.affiliateLink) !== "other"
+    ? getMarketplace(deal.affiliateLink)
+    : getMarketplace(deal.source);
 
   const productJsonLd = {
     "@context": "https://schema.org",
