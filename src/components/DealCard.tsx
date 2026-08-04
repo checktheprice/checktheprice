@@ -45,7 +45,7 @@ export function DealCard({ deal, onAlert }: Props) {
 
   return (
     <div
-      className="group relative flex w-full cursor-pointer gap-3 rounded-xl border bg-white p-3 shadow-sm transition-shadow duration-200 hover:shadow-md"
+      className="group flex w-full cursor-pointer gap-3 rounded-xl border bg-white p-3 shadow-sm transition-shadow duration-200 hover:shadow-md"
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest("a,button")) return;
@@ -60,13 +60,6 @@ export function DealCard({ deal, onAlert }: Props) {
         }
       }}
     >
-      {/* Marketplace logo - top-right corner */}
-      {marketplace !== "other" && (
-        <div className="absolute right-2 top-2 z-10">
-          <MarketplaceLogo marketplace={marketplace} size="sm" />
-        </div>
-      )}
-
       {/* Image - Left */}
       <div className="shrink-0">
         <img
@@ -80,10 +73,16 @@ export function DealCard({ deal, onAlert }: Props) {
       {/* Content - Right */}
       <div className="flex min-w-0 flex-1 flex-col justify-between">
         <div className="min-w-0">
+          {/* Title row — logo sits on the same line, right-aligned */}
           <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 pr-8 text-[16px] font-bold leading-snug text-foreground">
+            <h3 className="line-clamp-2 text-[16px] font-bold leading-snug text-foreground">
               {deal.title}
             </h3>
+            {marketplace !== "other" && (
+              <div className="ml-2 shrink-0 pt-0.5">
+                <MarketplaceLogo marketplace={marketplace} size="sm" />
+              </div>
+            )}
           </div>
           <Badge
             variant="outline"
@@ -115,7 +114,7 @@ export function DealCard({ deal, onAlert }: Props) {
           </span>
         </div>
 
-        {/* Button */}
+        {/* Buttons */}
         <div className="mt-2 flex items-center gap-2">
           {linkOk ? (
             <a
