@@ -81,14 +81,9 @@ export function DealCard({ deal, onAlert }: Props) {
       <div className="flex min-w-0 flex-1 flex-col justify-between">
         <div className="min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 text-[16px] font-bold leading-snug text-foreground">
+            <h3 className="line-clamp-2 pr-8 text-[16px] font-bold leading-snug text-foreground">
               {deal.title}
             </h3>
-            {level === "hot" && (
-              <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600">
-                {discount}% OFF
-              </span>
-            )}
           </div>
           <Badge
             variant="outline"
@@ -102,7 +97,7 @@ export function DealCard({ deal, onAlert }: Props) {
           />
         </div>
 
-        {/* Prices */}
+        {/* Prices + discount badge */}
         <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
           <span className="text-[18px] font-extrabold text-foreground">
             ₹{deal.onlinePrice.toLocaleString()}
@@ -110,6 +105,11 @@ export function DealCard({ deal, onAlert }: Props) {
           <span className="text-[13px] line-through text-muted-foreground">
             ₹{deal.mrp.toLocaleString()}
           </span>
+          {level === "hot" && (
+            <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600">
+              {discount}% OFF
+            </span>
+          )}
           <span className="rounded bg-green-50 px-1.5 py-0.5 text-[12px] font-semibold text-green-600">
             Save ₹{savings.toLocaleString()}
           </span>
