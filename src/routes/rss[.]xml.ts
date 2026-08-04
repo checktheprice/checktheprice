@@ -34,6 +34,10 @@ export const Route = createFileRoute("/rss.xml")({
             if (!slug) continue;
 
             const link = `${BASE_URL}/deal/${slug}`;
+            const isDatabaseDeal = deal.id.startsWith("db-");
+            const guid = isDatabaseDeal
+              ? `checktheprice:deal:${deal.id.slice(3)}`
+              : link;
             const pubDate = formatRfc2822(deal.addedAt);
             const discount =
               deal.mrp > 0
@@ -49,7 +53,7 @@ export const Route = createFileRoute("/rss.xml")({
               `    <item>\n` +
               `      <title>${escapeXml(deal.title)}</title>\n` +
               `      <link>${escapeXml(link)}</link>\n` +
-              `      <guid isPermaLink="true">${escapeXml(link)}</guid>\n` +
+              `      <guid isPermaLink="${isDatabaseDeal ? "false" : "true"}">${escapeXml(guid)}</guid>\n` +
               `      <pubDate>${escapeXml(pubDate)}</pubDate>\n` +
               `      <description>${escapeXml(description)}</description>\n` +
               (deal.image
