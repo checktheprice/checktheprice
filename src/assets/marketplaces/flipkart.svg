@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 28" role="img" aria-label="Flipkart">
+  <text x="0" y="20" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#2874F0">Flipkart</text>
+  <path fill="#FFE500" d="M 62 10 L 66 6 L 70 10 L 66 14 Z"/>
+  <path fill="#2874F0" d="M 66 6 L 66 14 L 70 10 Z"/>
+</svg>

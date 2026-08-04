@@ -4,6 +4,8 @@ import { ExternalLink, Flame, TrendingDown } from "lucide-react";
 import { ShareButton } from "@/components/ShareButton";
 import { useNavigate } from "@tanstack/react-router";
 import { RelativeTime } from "@/components/RelativeTime";
+import { MarketplaceLogo } from "@/components/MarketplaceLogo";
+import { getMarketplace } from "@/lib/marketplace";
 import {
   type Deal,
   calcDiscount,
@@ -26,6 +28,9 @@ export function DealCard({ deal, onAlert }: Props) {
   const linkOk = isValidAffiliateLink(deal.affiliateLink);
   const navigate = useNavigate();
   const slug = slugifyTitle(deal.title);
+  const marketplace = getMarketplace(deal.affiliateLink) !== "other"
+    ? getMarketplace(deal.affiliateLink)
+    : getMarketplace(deal.source);
 
   const openDetails = () => {
     navigate({ to: "/deal/$slug", params: { slug } });
@@ -40,7 +45,7 @@ export function DealCard({ deal, onAlert }: Props) {
 
   return (
     <div
-      className="group flex w-full cursor-pointer gap-3 rounded-xl border bg-white p-3 shadow-sm transition-shadow duration-200 hover:shadow-md"
+      className="group relative flex w-full cursor-pointer gap-3 rounded-xl border bg-white p-3 shadow-sm transition-shadow duration-200 hover:shadow-md"
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest("a,button")) return;
@@ -55,6 +60,13 @@ export function DealCard({ deal, onAlert }: Props) {
         }
       }}
     >
+      {/* Marketplace logo - top-right corner */}
+      {marketplace !== "other" && (
+        <div className="absolute right-2 top-2 z-10">
+          <MarketplaceLogo marketplace={marketplace} size="sm" />
+        </div>
+      )}
+
       {/* Image - Left */}
       <div className="shrink-0">
         <img
@@ -69,14 +81,9 @@ export function DealCard({ deal, onAlert }: Props) {
       <div className="flex min-w-0 flex-1 flex-col justify-between">
         <div className="min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 text-[16px] font-bold leading-snug text-foreground">
+            <h3 className="line-clamp-2 pr-8 text-[16px] font-bold leading-snug text-foreground">
               {deal.title}
             </h3>
-            {level === "hot" && (
-              <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600">
-                {discount}% OFF
-              </span>
-            )}
           </div>
           <Badge
             variant="outline"
@@ -90,7 +97,7 @@ export function DealCard({ deal, onAlert }: Props) {
           />
         </div>
 
-        {/* Prices */}
+        {/* Prices + discount badge */}
         <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
           <span className="text-[18px] font-extrabold text-foreground">
             ₹{deal.onlinePrice.toLocaleString()}
@@ -98,6 +105,11 @@ export function DealCard({ deal, onAlert }: Props) {
           <span className="text-[13px] line-through text-muted-foreground">
             ₹{deal.mrp.toLocaleString()}
           </span>
+          {level === "hot" && (
+            <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600">
+              {discount}% OFF
+            </span>
+          )}
           <span className="rounded bg-green-50 px-1.5 py-0.5 text-[12px] font-semibold text-green-600">
             Save ₹{savings.toLocaleString()}
           </span>
