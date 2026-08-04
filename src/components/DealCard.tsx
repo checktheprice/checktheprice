@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Flame, TrendingDown } from "lucide-react";
-import { ShareButton } from "@components/ShareButton";
+import { ShareButton } from "@/components/ShareButton";
 import { useNavigate } from "@tanstack/react-router";
 import { RelativeTime } from "@/components/RelativeTime";
 import { MarketplaceLogo } from "@/components/MarketplaceLogo";
@@ -28,7 +28,9 @@ export function DealCard({ deal, onAlert }: Props) {
   const linkOk = isValidAffiliateLink(deal.affiliateLink);
   const navigate = useNavigate();
   const slug = slugifyTitle(deal.title);
-  const marketplace = getMarketplace(deal.affiliateLink) ?? getMarketplace(deal.source);
+  const marketplace = getMarketplace(deal.affiliateLink) !== "other"
+    ? getMarketplace(deal.affiliateLink)
+    : getMarketplace(deal.source);
 
   const openDetails = () => {
     navigate({ to: "/deal/$slug", params: { slug } });
