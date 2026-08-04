@@ -1,6 +1,8 @@
 import { ExternalLink, Trophy, Truck, BadgePercent, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MarketplaceLogo } from "@/components/MarketplaceLogo";
+import { getMarketplace } from "@/lib/marketplace";
 import type { CompareOffer, CompareResult } from "@/lib/compare/types";
 
 function inr(n: number | null): string {
@@ -15,6 +17,8 @@ function OfferRow({
   offer: CompareOffer;
   isLowest: boolean;
 }) {
+  const marketplace = getMarketplace(offer.url);
+
   return (
     <div
       className={`flex gap-3 rounded-xl border bg-card p-3 transition-shadow hover:shadow-md ${
@@ -40,6 +44,9 @@ function OfferRow({
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/70">
               {offer.store}
             </span>
+            {marketplace !== "other" && (
+              <MarketplaceLogo marketplace={marketplace} size="sm" />
+            )}
             {isLowest && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground">
                 <Trophy className="h-3 w-3" /> Lowest

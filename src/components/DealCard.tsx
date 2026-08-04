@@ -1,9 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Flame, TrendingDown } from "lucide-react";
-import { ShareButton } from "@/components/ShareButton";
+import { ShareButton } from "@components/ShareButton";
 import { useNavigate } from "@tanstack/react-router";
 import { RelativeTime } from "@/components/RelativeTime";
+import { MarketplaceLogo } from "@/components/MarketplaceLogo";
+import { getMarketplace } from "@/lib/marketplace";
 import {
   type Deal,
   calcDiscount,
@@ -26,6 +28,7 @@ export function DealCard({ deal, onAlert }: Props) {
   const linkOk = isValidAffiliateLink(deal.affiliateLink);
   const navigate = useNavigate();
   const slug = slugifyTitle(deal.title);
+  const marketplace = getMarketplace(deal.affiliateLink) ?? getMarketplace(deal.source);
 
   const openDetails = () => {
     navigate({ to: "/deal/$slug", params: { slug } });
@@ -40,7 +43,7 @@ export function DealCard({ deal, onAlert }: Props) {
 
   return (
     <div
-      className="group flex w-full cursor-pointer gap-3 rounded-xl border bg-white p-3 shadow-sm transition-shadow duration-200 hover:shadow-md"
+      className="group relative flex w-full cursor-pointer gap-3 rounded-xl border bg-white p-3 shadow-sm transition-shadow duration-200 hover:shadow-md"
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest("a,button")) return;
@@ -55,6 +58,13 @@ export function DealCard({ deal, onAlert }: Props) {
         }
       }}
     >
+      {/* Marketplace logo - top-right corner */}
+      {marketplace !== "other" && (
+        <div className="absolute right-2 top-2 z-10">
+          <MarketplaceLogo marketplace={marketplace} size="sm" />
+        </div>
+      )}
+
       {/* Image - Left */}
       <div className="shrink-0">
         <img

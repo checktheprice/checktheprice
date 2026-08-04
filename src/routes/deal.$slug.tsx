@@ -2,6 +2,8 @@ import { createFileRoute, Link, useRouter, notFound } from "@tanstack/react-rout
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { DealCard } from "@/components/DealCard";
 import { PriceAlertModal } from "@/components/PriceAlertModal";
+import { MarketplaceLogo } from "@/components/MarketplaceLogo";
+import { getMarketplace } from "@/lib/marketplace";
 import { useEffect, useMemo, useState } from "react";
 import { slugifyTitle, type Deal, calcDiscount } from "@/lib/deals";
 import { fetchAllDeals } from "@/lib/all-deals";
@@ -158,6 +160,8 @@ function DealPage() {
 
   if (!deal || !seo) return <DealNotFound />;
 
+  const marketplace = getMarketplace(deal.affiliateLink) ?? getMarketplace(deal.source);
+
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -190,10 +194,15 @@ function DealPage() {
         ← Back to all deals
       </Link>
 
-      {/* H1 — primary heading for the deal page */}
-      <h1 className="mt-3 text-2xl font-extrabold leading-tight text-foreground sm:text-3xl">
-        {deal.title}
-      </h1>
+      {/* H1 + marketplace logo */}
+      <div className="mt-3 flex items-center gap-3">
+        <h1 className="text-2xl font-extrabold leading-tight text-foreground sm:text-3xl">
+          {deal.title}
+        </h1>
+        {marketplace !== "other" && (
+          <MarketplaceLogo marketplace={marketplace} size="md" />
+        )}
+      </div>
       <div className="mt-1 text-xs text-muted-foreground">
         <span>{updatedLabel}</span>
         <span className="mx-1.5">·</span>
@@ -313,4 +322,3 @@ function DealPage() {
     </div>
   );
 }
-
