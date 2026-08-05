@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 30" role="img" aria-label="Amazon">
   <path fill="#FF9900"
-  d="M54 22
-     C60 24.5 68 24.5 74 22
-     L74 23.2
-     C68 25.5 60 25.5 54 23.2
+  d="M8 22
+     C24 30 58 30 74 22
+     L74 23.5
+     C58 31 24 31 8 23.5
      Z"/>
   <text x="5" y="20" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="#232F3E">amazon</text>
 </svg>
