@@ -128,11 +128,15 @@ function extractAmazonProduct(html: string): Extracted {
 async function scrapeWithFallback(
   firecrawl: Firecrawl,
   url: string,
-): Promise<string> {
-  let html = "";
+  extract: (html: string) => Extracted,
+): Promise<{ html: string; extracted: Extracted }> {
   let lastError: unknown = null;
+  let firstScrapeUsable = false;
 
   for (const proxy of ["auto", "stealth"] as const) {
+    let html = "";
+    let retryReason = "";
+
     try {
       const res = (await firecrawl.scrape(url, {
         formats: ["rawHtml"],
@@ -141,34 +145,63 @@ async function scrapeWithFallback(
       } as Parameters<typeof firecrawl.scrape>[1])) as {
         rawHtml?: string;
         html?: string;
+        status?: string;
+        success?: boolean;
       };
       html = res.rawHtml ?? res.html ?? "";
+      console.log(
+        `[firecrawl] proxy=${proxy} status=${res.status ?? (res.success === true ? "success" : res.success === false ? "failed" : "unknown")} htmlLength=${html.length}`,
+      );
     } catch (err) {
+      retryReason = `exception: ${(err as Error).message}`;
+      console.log(`[firecrawl] proxy=${proxy} retry reason: ${retryReason}`);
       lastError = err;
-      html = "";
       continue;
     }
+
     if (!html) {
-      lastError = new Error("empty HTML response");
+      retryReason = "empty HTML response";
+      console.log(`[firecrawl] proxy=${proxy} retry reason: ${retryReason}`);
+      lastError = new Error(retryReason);
       continue;
     }
+
     if (isCaptchaPage(html)) {
-      lastError = new Error("CAPTCHA page served");
-      html = "";
+      retryReason = "CAPTCHA page served";
+      console.log(`[firecrawl] proxy=${proxy} retry reason: ${retryReason}`);
+      lastError = new Error(retryReason);
       continue;
     }
-    break;
+
+    const extracted = extract(html);
+    const missing: string[] = [];
+    if (!extracted.title) missing.push("title");
+    if (extracted.price === null) missing.push("price");
+    if (!extracted.image) missing.push("image");
+
+    if (proxy === "auto") {
+      firstScrapeUsable = missing.length === 0;
+      console.log(
+        `[firecrawl] proxy=auto first scrape usable=${firstScrapeUsable} missing=[${missing.join(", ")}]`,
+      );
+    }
+
+    if (missing.length > 0) {
+      retryReason = `unusable data (missing: ${missing.join(", ")})`;
+      console.log(`[firecrawl] proxy=${proxy} retry reason: ${retryReason}`);
+      lastError = new Error(retryReason);
+      continue;
+    }
+
+    console.log(`[firecrawl] proxy=${proxy} success — usable product data extracted`);
+    return { html, extracted };
   }
 
-  if (!html) {
-    const reason =
-      lastError instanceof Error ? lastError.message : String(lastError);
-    throw new Error(
-      `scrape failed after proxy fallback (CAPTCHA or fetch error): ${reason}`,
-    );
-  }
-
-  return html;
+  const reason =
+    lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(
+    `scrape failed after proxy fallback (CAPTCHA or fetch error): ${reason}`,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -228,23 +261,15 @@ export async function scrapeProduct(rawUrl: string): Promise<ScrapedProduct> {
     throw new Error("Not a valid amazon.in or flipkart.com product URL.");
   }
 
+  const extract =
+    meta.merchant === "amazon" ? extractAmazonProduct : extractFlipkartProduct;
+
   const firecrawl = new Firecrawl({ apiKey });
-  const html = await scrapeWithFallback(firecrawl, meta.standardLink);
-
-  const extracted =
-    meta.merchant === "amazon"
-      ? extractAmazonProduct(html)
-      : extractFlipkartProduct(html);
-
-  const missing: string[] = [];
-  if (!extracted.title) missing.push("title");
-  if (extracted.price === null) missing.push("price");
-  if (!extracted.image) missing.push("image");
-  if (missing.length > 0) {
-    throw new Error(
-      `Required product fields could not be extracted (${missing.join(", ")}).`,
-    );
-  }
+  const { extracted } = await scrapeWithFallback(
+    firecrawl,
+    meta.standardLink,
+    extract,
+  );
 
   return {
     merchant: meta.merchant,
