@@ -19,13 +19,19 @@ export const COMPARE_PLACEHOLDER =
  * Used by both the /compare page and the homepage — the backend logic
  * (comparePricesFn) and the results renderer (PriceComparison) are shared,
  * so there is no duplicated comparison code.
+ *
+ * variant="section" renders the full band with its own heading (used on
+ * /compare). variant="bare" renders only the search box + results, for pages
+ * that already provide the hero heading (the homepage).
  */
 export function ComparePricesSection({
   headingLevel = "h2",
   className = "",
+  variant = "section",
 }: {
   headingLevel?: "h1" | "h2";
   className?: string;
+  variant?: "section" | "bare";
 }) {
   const [query, setQuery] = useState("");
   const compare = useServerFn(comparePricesFn);
@@ -42,6 +48,58 @@ export function ComparePricesSection({
   }
 
   const Heading = headingLevel;
+  const hasResults =
+    mutation.isPending || mutation.isError || !!mutation.data;
+
+  const form = (
+    <form
+      onSubmit={onSubmit}
+      className="mx-auto flex w-full max-w-2xl flex-col gap-2 sm:flex-row"
+    >
+      <div className="relative flex-1">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={COMPARE_PLACEHOLDER}
+          aria-label={COMPARE_PLACEHOLDER}
+          className="h-11 pl-9"
+          maxLength={300}
+        />
+      </div>
+      <Button
+        type="submit"
+        className="h-11 px-6 font-bold"
+        disabled={mutation.isPending || query.trim().length < 2}
+      >
+        {mutation.isPending ? "Comparing…" : "Compare Prices"}
+      </Button>
+    </form>
+  );
+
+  /* Results only appear after a search — initially just the search box. */
+  const results = hasResults ? (
+    <div className="mt-6 text-left">
+      {mutation.isError && (
+        <div className="mb-4 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          Something went wrong while comparing prices. Please try again.
+        </div>
+      )}
+      <PriceComparison
+        result={mutation.data ?? null}
+        loading={mutation.isPending}
+      />
+    </div>
+  ) : null;
+
+  if (variant === "bare") {
+    return (
+      <div id="compare" className={className}>
+        {form}
+        {results}
+      </div>
+    );
+  }
 
   return (
     <section
@@ -56,45 +114,10 @@ export function ComparePricesSection({
           {COMPARE_SUBTITLE}
         </p>
 
-        <form
-          onSubmit={onSubmit}
-          className="mx-auto mt-6 flex max-w-2xl flex-col gap-2 sm:flex-row"
-        >
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={COMPARE_PLACEHOLDER}
-              aria-label={COMPARE_PLACEHOLDER}
-              className="h-11 pl-9"
-              maxLength={300}
-            />
-          </div>
-          <Button
-            type="submit"
-            className="h-11 px-6 font-bold"
-            disabled={mutation.isPending || query.trim().length < 2}
-          >
-            {mutation.isPending ? "Comparing…" : "Compare Prices"}
-          </Button>
-        </form>
-
-        {/* Results only appear after a search — initially just the search box. */}
-        {(mutation.isPending || mutation.isError || mutation.data) && (
-          <div className="mt-6 text-left">
-            {mutation.isError && (
-              <div className="mb-4 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-                Something went wrong while comparing prices. Please try again.
-              </div>
-            )}
-            <PriceComparison
-              result={mutation.data ?? null}
-              loading={mutation.isPending}
-            />
-          </div>
-        )}
+        <div className="mt-6">{form}</div>
+        {results}
       </div>
     </section>
   );
 }
+

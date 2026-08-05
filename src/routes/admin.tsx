@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { buildAmazonAffiliateLink } from "@/lib/affiliate";
 import { calcDiscount } from "@/lib/deals";
+import { normalizeCategory } from "@/lib/categories";
 import {
   type Merchant,
   buildMerchantAffiliateLink,
@@ -297,7 +298,9 @@ function AdminPage() {
       const { error } = await supabase.from("deals").insert({
         title: scraped.title,
         image: scraped.image || null,
-        category: scraped.category || "General",
+        // All writes go through the centralized normalization layer so the
+        // site never grows ad-hoc category names.
+        category: normalizeCategory(scraped.category),
         price: priceNum,
         mrp: mrpNum,
         discount_percentage: discount,

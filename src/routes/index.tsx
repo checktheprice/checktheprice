@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { Search, Tag, Sparkles, TrendingDown, Flame, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Tag, TrendingDown, Flame, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DealCard } from "@/components/DealCard";
@@ -19,7 +18,11 @@ import {
   discountRangeLabel,
 } from "@/lib/discount-ranges";
 import { Link } from "@tanstack/react-router";
-import { ComparePricesSection } from "@/components/ComparePricesSection";
+import {
+  ComparePricesSection,
+  COMPARE_SUBTITLE,
+} from "@/components/ComparePricesSection";
+import { normalizeCategory, sortCategoriesForDisplay } from "@/lib/categories";
 
 const dealsQueryOptions = queryOptions({
   queryKey: ["deals"],
@@ -119,15 +122,16 @@ function Index() {
 
   const { discount: discountRange } = Route.useSearch();
 
-  const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [filter, setFilter] = useState<"all" | "hot">("all");
   const [alertDeal, setAlertDeal] = useState<Deal | null>(null);
 
+  // Categories are normalized for display so scraped variants ("Smartphones",
+  // "Mobile Phones", …) collapse into one canonical chip.
   const categories = useMemo(() => {
-    const set = new Set<string>(["All"]);
-    deals?.forEach((d) => set.add(d.category));
-    return Array.from(set);
+    const set = new Set<string>();
+    deals?.forEach((d) => set.add(normalizeCategory(d.category)));
+    return ["All", ...sortCategoriesForDisplay(Array.from(set))];
   }, [deals]);
 
   // Deal data can differ between SSR and the first client render (the DB query
@@ -139,16 +143,14 @@ function Index() {
   const filtered = useMemo(() => {
     if (!deals) return [];
     const list = deals.filter((d) => {
-      const matchSearch = d.title
-        .toLowerCase()
-        .includes(search.toLowerCase());
-      const matchCat = category === "All" || d.category === category;
+      const matchCat =
+        category === "All" || normalizeCategory(d.category) === category;
       const matchHot =
         filter === "all" || calcDiscount(d.mrp, d.onlinePrice) > 65;
       const matchDiscount =
         !discountRange ||
         inDiscountRange(calcDiscount(d.mrp, d.onlinePrice), discountRange);
-      return matchSearch && matchCat && matchHot && matchDiscount;
+      return matchCat && matchHot && matchDiscount;
     });
     return [...list].sort((a, b) => {
       const au = a.updatedAt;
@@ -158,113 +160,96 @@ function Index() {
       if (!au && bu) return 1;
       return 0;
     });
-  }, [deals, search, category, filter, discountRange]);
+  }, [deals, category, filter, discountRange]);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero */}
+      {/* ── Hero (the only hero on the page) ───────────────────────────── */}
       <header className="relative overflow-hidden border-b">
         <div
           className="absolute inset-0 -z-10"
           style={{ background: "var(--gradient-hero)" }}
         />
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-foreground">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-              <Tag className="h-4 w-4" />
-            </div>
-            <span className="text-base font-bold tracking-tight">
-              CheckThePrice
-            </span>
+        <div className="mx-auto max-w-4xl px-4 pb-8 pt-8 text-center sm:pb-10 sm:pt-12">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border bg-card/80 px-3 py-1 text-xs font-semibold text-muted-foreground">
+            <Tag className="h-3.5 w-3.5" />
+            Price comparison + daily loot
           </div>
-          <div className="hidden items-center gap-2 text-xs font-medium text-muted-foreground sm:flex">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Updated daily</span>
-          </div>
-        </nav>
-
-        <div className="mx-auto max-w-4xl px-4 pb-6 pt-3 text-center sm:pb-8 sm:pt-4">
           <h1
             className="text-3xl font-extrabold tracking-tight sm:text-5xl"
             style={{ color: "#ff9900" }}
           >
-            CheckThePrice
+            Check the Price Before You Buy
           </h1>
-          <p className="mx-auto mt-2 max-w-2xl text-sm font-semibold text-foreground sm:text-base">
-            🔥 Hottest Online Deals vs Offline Market Prices
+          <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
+            {COMPARE_SUBTITLE}
           </p>
 
-          <div className="mx-auto mt-4 flex max-w-xl items-center gap-2 rounded-full bg-card p-1 shadow-lg border">
-            <Search className="ml-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search deals..."
-              className="border-0 bg-transparent text-sm text-foreground shadow-none focus-visible:ring-0"
-            />
+          {/* Search box: product names or Amazon/Flipkart URLs.
+              Comparison results render right below, only after a search. */}
+          <div className="mt-6">
+            <ComparePricesSection variant="bare" />
           </div>
         </div>
       </header>
 
-      {/* Shared price comparison tool (same component as /compare) */}
-      <ComparePricesSection />
+      {/* ── Hot Loot ──────────────────────────────────────────────────── */}
+      <section className="border-b bg-card/40">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+            <Flame className="h-4 w-4 text-loot-hot" /> Hot Loot
+            <span className="font-normal text-muted-foreground">
+              — deals above 65% off
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setFilter(filter === "hot" ? "all" : "hot")}
+            className={`shrink-0 text-xs transition-all duration-200 ${
+              filter === "hot"
+                ? "bg-loot-hot hover:bg-loot-hot text-category-active-text font-bold shadow-md"
+                : "bg-muted/50 border border-border/80 text-foreground hover:bg-muted hover:border-border font-medium shadow-sm"
+            }`}
+          >
+            {filter === "hot" ? "Showing Hot Loot only" : "Show Hot Loot only"}
+          </Button>
+        </div>
+      </section>
 
-      {/* Filters - Horizontal scroll */}
+      {/* ── Categories (compact horizontal chips) ─────────────────────── */}
       <section
         id="categories"
         className="sticky top-[52px] z-10 border-b bg-background/90 backdrop-blur"
       >
-        <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar">
-          <Button
-            size="sm"
-            onClick={() => setFilter(filter === "hot" ? "all" : "hot")}
-            className={`shrink-0 transition-all duration-200 ${
-              filter === "hot"
-                ? "bg-loot-hot hover:bg-loot-hot text-category-active-text font-bold shadow-md scale-105"
-                : "bg-muted/50 border border-border/80 text-foreground hover:bg-muted hover:border-border font-medium shadow-sm text-xs"
-            }`}
-          >
-            <Flame className="mr-1 h-3.5 w-3.5" /> Hot Loot
-          </Button>
-          <div className="h-5 w-px bg-border shrink-0" />
+        <div className="mx-auto flex max-w-7xl items-center gap-1.5 overflow-x-auto px-4 py-2 no-scrollbar">
           {visibleCategories.map((c) => {
             const isActive = category === c;
-            let activeClass =
-              "bg-primary hover:bg-primary text-primary-foreground";
-            if (c === "Electronics")
-              activeClass =
-                "bg-category-electronics hover:bg-category-electronics text-category-active-text";
-            else if (c === "Wearables")
-              activeClass =
-                "bg-category-wearables hover:bg-category-wearables text-category-active-text";
-            else if (c === "Fashion")
-              activeClass =
-                "bg-category-fashion hover:bg-category-fashion text-category-active-text";
-            else if (c === "All")
-              activeClass =
-                "bg-category-all hover:bg-category-all text-category-active-text";
-
             return (
-              <Button
+              <button
                 key={c}
-                size="sm"
+                type="button"
                 onClick={() => setCategory(c)}
-                className={`shrink-0 transition-all duration-200 text-xs ${
+                className={`shrink-0 rounded-full border px-3 py-1 text-xs transition-all duration-200 ${
                   isActive
-                    ? `${activeClass} font-bold shadow-md scale-105`
-                    : "bg-muted/50 border border-border/80 text-foreground hover:bg-muted hover:border-border font-medium shadow-sm"
+                    ? "border-primary bg-primary text-primary-foreground font-bold shadow-sm"
+                    : "border-border/80 bg-muted/40 text-foreground hover:bg-muted font-medium"
                 }`}
               >
                 {c}
-              </Button>
+              </button>
             );
           })}
         </div>
       </section>
 
-      {/* Grid - One card per row */}
+      {/* ── Latest Deals ─────────────────────────────────────────────── */}
       <main id="deals" className="mx-auto max-w-7xl px-3 py-4 sm:px-4">
-        <LastUpdated />
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-lg font-extrabold tracking-tight sm:text-xl">
+            Latest Deals
+          </h2>
+          <LastUpdated />
+        </div>
         {discountRange && (
           <div className="mb-3 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs sm:text-sm">
             <span className="font-medium text-foreground">
@@ -317,6 +302,7 @@ function Index() {
         </div>
       </main>
 
+      {/* ── Trust + FAQ (footer is global) ────────────────────────────── */}
       <TrustSection />
       <FAQ />
 
