@@ -596,6 +596,8 @@ function AdminPage() {
           otherwise the original Flipkart URL. Independent of Google Sheets.
         </p>
       </div>
+
+      <ManageDeals />
     </main>
   );
 }
