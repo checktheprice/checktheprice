@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildAmazonAffiliateLink } from "@/lib/affiliate";
 import { calcDiscount } from "@/lib/deals";
 import { normalizeCategory } from "@/lib/categories";
+import { ManageDeals } from "@/components/admin/ManageDeals";
 import {
   type Merchant,
   buildMerchantAffiliateLink,
