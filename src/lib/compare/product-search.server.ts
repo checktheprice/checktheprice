@@ -264,6 +264,7 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
   const empty = (error: string | null, query = input): CompareResult => ({
     query,
     resolvedFromUrl: false,
+    selected: null,
     offers: [],
     lowestPrice: null,
     highestPrice: null,
@@ -275,8 +276,9 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
 
   let query = input;
   let resolvedFromUrl = false;
+  let selected: CompareOffer | null = null;
   if (isUrl(input)) {
-    const title = await resolveTitleFromUrl(input);
+    const { title, product } = await resolveProductFromUrl(input);
     if (!title) {
       return empty(
         "Could not read the product name from that link. Try typing the product name instead.",
@@ -284,10 +286,12 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
     }
     query = title;
     resolvedFromUrl = true;
+    selected = buildSelectedOffer(input, title, product);
   }
 
   const res = await serpApiGoogleShopping(query);
-  if (res.error) return { ...empty(res.error, query), resolvedFromUrl };
+  if (res.error)
+    return { ...empty(res.error, query), resolvedFromUrl, selected };
 
   const raw = [
     ...(res.shopping_results ?? []),
@@ -307,11 +311,17 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
   ]);
 
   const seen = new Set<string>();
+  // Strict rule-based matching against the selected product (or the typed
+  // query) — accessories, covers, chargers, other models/variants are dropped.
+  const reference = buildSignature(selected?.title ?? query);
+  if (selected) seen.add(offerKey(selected));
+
   const offers = resolved
     .map(({ r, url }) => (url ? toOffer(r, url) : null))
     .filter((o): o is CompareOffer => o !== null)
+    .filter((o) => isSameProduct(reference, o.title))
     .filter((o) => {
-      const key = `${o.merchant}|${o.price ?? "na"}|${o.title.toLowerCase()}`;
+      const key = offerKey(o);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -325,18 +335,60 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
   const priced = offers.filter((o) => o.price != null).map((o) => o.price!);
   const lowestPrice = priced.length ? Math.min(...priced) : null;
   const highestPrice = priced.length ? Math.max(...priced) : null;
+
+  // Savings are always measured against the selected product when we have one,
+  // otherwise against the most expensive matched offer.
+  const baseline = selected?.price ?? highestPrice;
   const savings =
-    lowestPrice != null && highestPrice != null && highestPrice > lowestPrice
-      ? Math.round(highestPrice - lowestPrice)
+    baseline != null && lowestPrice != null && baseline > lowestPrice
+      ? Math.round(baseline - lowestPrice)
       : null;
 
   return {
     query,
     resolvedFromUrl,
+    selected,
     offers,
     lowestPrice,
     highestPrice,
     savings,
-    error: offers.length ? null : "No offers found for this product.",
+    error: offers.length
+      ? null
+      : selected
+        ? "We couldn't find the same product on other stores."
+        : "No offers found for this product.",
+  };
+}
+
+function offerKey(o: CompareOffer): string {
+  return `${o.merchant}|${o.price ?? "na"}|${o.title.toLowerCase()}`;
+}
+
+/** Build the pinned "Selected Product" card from the pasted URL. */
+function buildSelectedOffer(
+  rawUrl: string,
+  title: string,
+  product: ScrapedProduct | null,
+): CompareOffer {
+  const url = (product?.standardLink || rawUrl).trim();
+  const { slug, label } = resolveMerchant(url, product?.merchant ?? null);
+  const price =
+    product && typeof product.price === "number" && product.price > 0
+      ? product.price
+      : null;
+  return {
+    storeRaw: product?.merchant ?? label,
+    store: label,
+    merchant: slug,
+    title,
+    price,
+    priceLabel: null,
+    shipping: null,
+    offer: null,
+    image: product?.image || null,
+    url,
+    buyUrl: buildCompareBuyLink(slug, url),
+    rating: null,
+    reviews: null,
   };
 }
