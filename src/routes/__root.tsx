@@ -13,8 +13,6 @@ import { Analytics } from "@vercel/analytics/react";
 import { Navbar } from "@/components/Navbar";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { Footer } from "@/components/Footer";
-import { CuelinksScript } from "@/components/CuelinksScript";
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -129,6 +127,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
         {children}
         <Scripts />
         <Analytics />
+        {/* Cuelinks — must be rendered server-side inside <body> */}
+        <script
+          dangerouslySetInnerHTML={{ __html: `var cId = "303416";` }}
+        />
+        <script
+          async
+          src="https://cdn0.cuelinks.com/js/cuelinksv2.js"
+        ></script>
       </body>
     </html>
   );
@@ -143,7 +149,6 @@ function RootComponent() {
       <Outlet />
       <Footer />
       <WhatsAppFloat />
-      <CuelinksScript />
     </QueryClientProvider>
   );
 }
