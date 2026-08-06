@@ -25,15 +25,15 @@ export function merchantLabel(m: Merchant): MerchantLabel {
 /**
  * Resolve the outbound "Grab Deal" link for a product.
  * Amazon: always the Associates link (unchanged behaviour).
- * Flipkart: the Cuelinks affiliate URL when supplied, otherwise the plain
- * Flipkart product URL as a temporary fallback so the button still works.
+ * Every other merchant (Flipkart, Croma, Reliance Digital, Vijay Sales,
+ * Tata CLiQ, Myntra, AJIO, …): the original merchant product URL, monetized
+ * automatically by the globally installed Cuelinks script.
  */
 export function buildMerchantAffiliateLink(
   merchant: Merchant,
   productUrl: string,
-  cuelinksUrl?: string | null,
+  _cuelinksUrl?: string | null,
 ): string {
   if (merchant === "amazon") return buildAmazonAffiliateLink(productUrl);
-  const cue = (cuelinksUrl ?? "").trim();
-  return cue || productUrl.trim();
+  return productUrl.trim();
 }
