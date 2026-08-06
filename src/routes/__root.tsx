@@ -13,8 +13,6 @@ import { Analytics } from "@vercel/analytics/react";
 import { Navbar } from "@/components/Navbar";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { Footer } from "@/components/Footer";
-import { CuelinksScript } from "@/components/CuelinksScript";
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
