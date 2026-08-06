@@ -9,6 +9,7 @@
  */
 import { buildCompareBuyLink, resolveMerchant } from "./merchants";
 import type { CompareOffer, CompareResult } from "./types";
+import { buildSignature, isSameProduct } from "./match";
 import {
   collectStoreEntries,
   serpApiGoogleShopping,
@@ -18,6 +19,7 @@ import {
 import {
   detectMerchantUrl,
   scrapeProduct,
+  type ScrapedProduct,
 } from "@/lib/scrape/firecrawl.server";
 
 /** Max parallel merchant-link resolutions per search. */
@@ -145,11 +147,23 @@ function titleFromSlug(u: URL): string | null {
 export async function resolveTitleFromUrl(
   rawUrl: string,
 ): Promise<string | null> {
+  const { title } = await resolveProductFromUrl(rawUrl);
+  return title;
+}
+
+/**
+ * Resolve the pasted URL into a title and, when the shared scraper succeeds,
+ * the full selected product (price + image) — using the SAME single scrape
+ * call, so no extra network requests are introduced.
+ */
+export async function resolveProductFromUrl(
+  rawUrl: string,
+): Promise<{ title: string | null; product: ScrapedProduct | null }> {
   let u: URL;
   try {
     u = new URL(rawUrl.trim());
   } catch {
-    return null;
+    return { title: null, product: null };
   }
 
   // 1. Try the shared Firecrawl scraper for Amazon/Flipkart product URLs.
@@ -157,7 +171,7 @@ export async function resolveTitleFromUrl(
     try {
       const product = await scrapeProduct(rawUrl);
       if (product.title && product.title.length > 3) {
-        return product.title.slice(0, 160);
+        return { title: product.title.slice(0, 160), product };
       }
     } catch (e) {
       console.error("[compare] firecrawl title extraction failed", e);
@@ -202,14 +216,14 @@ export async function resolveTitleFromUrl(
         cleaned.length > 3 &&
         !/robot check|captcha/i.test(cleaned)
       ) {
-        return cleaned.slice(0, 160);
+        return { title: cleaned.slice(0, 160), product: null };
       }
     }
   } catch (e) {
     console.error("[compare] title fetch failed", e);
   }
 
-  return titleFromSlug(u);
+  return { title: titleFromSlug(u), product: null };
 }
 
 function toOffer(
