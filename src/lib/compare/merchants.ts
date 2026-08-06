@@ -64,20 +64,15 @@ export function resolveMerchant(
 /**
  * Build the outbound buy link for a comparison offer.
  * Amazon reuses the site's existing Associates link generator.
- * Flipkart uses the Cuelinks URL when supplied, otherwise the raw product URL.
- * All other merchants use their original URL for now.
+ * Every other merchant keeps its original product URL so the globally
+ * installed Cuelinks script can monetize the click automatically.
  */
 export function buildCompareBuyLink(
   slug: MerchantSlug,
   productUrl: string,
-  flipkartAffiliateUrl?: string | null,
 ): string {
   const url = (productUrl ?? "").trim();
   if (!url) return url;
   if (slug === "amazon") return buildAmazonAffiliateLink(url);
-  if (slug === "flipkart") {
-    const cue = (flipkartAffiliateUrl ?? "").trim();
-    return cue || url;
-  }
   return url;
 }
