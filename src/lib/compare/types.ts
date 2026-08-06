@@ -26,6 +26,11 @@ export type CompareResult = {
   query: string;
   /** True when the input was a product URL and the title was resolved from it. */
   resolvedFromUrl: boolean;
+  /**
+   * The product extracted from the pasted URL. Always pinned first in the UI
+   * and used as the baseline for the savings figure. Null for text searches.
+   */
+  selected: CompareOffer | null;
   offers: CompareOffer[];
   /** Cheapest price found, if any. */
   lowestPrice: number | null;
