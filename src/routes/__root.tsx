@@ -13,6 +13,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { Navbar } from "@/components/Navbar";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { Footer } from "@/components/Footer";
+import { CuelinksScript } from "@/components/CuelinksScript";
 
 function NotFoundComponent() {
   return (
@@ -142,6 +143,7 @@ function RootComponent() {
       <Outlet />
       <Footer />
       <WhatsAppFloat />
+      <CuelinksScript />
     </QueryClientProvider>
   );
 }
