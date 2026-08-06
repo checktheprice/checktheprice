@@ -1,4 +1,11 @@
-import { ExternalLink, Trophy, Truck, BadgePercent, Star } from "lucide-react";
+import {
+  ExternalLink,
+  Trophy,
+  Truck,
+  BadgePercent,
+  Star,
+  Pin,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MarketplaceLogo } from "@/components/MarketplaceLogo";
@@ -125,15 +132,21 @@ export function PriceComparison({
 
   if (!result) return null;
 
-  if (result.error && result.offers.length === 0) {
+  const lowest = result.lowestPrice;
+  const selected = result.selected;
+
+  /* No matched offers: keep showing the selected product when we have one. */
+  if (result.offers.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-        {result.error}
+      <div className="flex flex-col gap-4">
+        <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          {result.error ??
+            "We couldn't find the same product on other stores."}
+        </div>
+        {selected && <OfferRow offer={selected} isLowest={false} isSelected />}
       </div>
     );
   }
-
-  const lowest = result.lowestPrice;
 
   return (
     <div className="flex flex-col gap-4">
@@ -143,7 +156,7 @@ export function PriceComparison({
         </p>
         {result.savings != null && (
           <p className="mt-1 text-sm font-semibold text-emerald-600">
-            You Save {inr(result.savings)}
+            Save {inr(result.savings)}
           </p>
         )}
         <p className="mt-1 text-xs text-muted-foreground">
@@ -153,6 +166,7 @@ export function PriceComparison({
       </div>
 
       <div className="flex flex-col gap-3">
+        {selected && <OfferRow offer={selected} isLowest={false} isSelected />}
         {result.offers.map((o, i) => (
           <OfferRow
             key={`${o.merchant}-${o.url}-${i}`}
