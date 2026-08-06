@@ -10,10 +10,10 @@ import {
 
 import appCss from "../styles.css?url";
 import { Analytics } from "@vercel/analytics/react";
-import { Navbar } from "@components/Navbar";
-import { WhatsAppFloat } from "@components/WhatsAppFloat";
-import { Footer } from "@components/Footer";
-import { CuelinksScript } from "@components/CuelinksScript";
+import { Navbar } from "@/components/Navbar";
+import { WhatsAppFloat } from "@/components/WhatsAppFloat";
+import { Footer } from "@/components/Footer";
+import { CuelinksScript } from "@/components/CuelinksScript";
 
 function NotFoundComponent() {
   return (
@@ -87,7 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Checktheprice" },
       { name: "twitter:description", content: "Price Drop Finder displays online offers with visual savings indicators and price alerts." },
-      { name: "google-site-verification", content: "V7VteZl88q3V7aQCL4JC0J5zhAJQzSXMqF7WtXxUjec" },
+      { name: "google-site-verification", content: "V7VteZl88q3V7aQCL4JC0b5zhAJQzSXMqF7WtXxUjec" },
       { name: "p:domain_verify", content: "35903a8ed09a6345560766a4e353d1b7" },
     ],
     links: [
