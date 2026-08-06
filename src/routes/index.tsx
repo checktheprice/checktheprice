@@ -42,7 +42,9 @@ const dbDealsQueryOptions = queryOptions({
 
 export const Route = createFileRoute("/")({
   component: Index,
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { discount?: DiscountRangeId } => {
     const d = typeof search.discount === "string" ? search.discount : undefined;
     const allowed = DISCOUNT_RANGES.map((r: { id: string }) => r.id);
     return {
