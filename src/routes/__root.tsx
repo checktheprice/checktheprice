@@ -127,6 +127,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
         {children}
         <Scripts />
         <Analytics />
+        {/* Cuelinks — must be rendered server-side inside <body> */}
+        <script
+          dangerouslySetInnerHTML={{ __html: `var cId = "303416";` }}
+        />
+        <script
+          async
+          src="https://cdn0.cuelinks.com/js/cuelinksv2.js"
+        ></script>
       </body>
     </html>
   );
@@ -141,7 +149,6 @@ function RootComponent() {
       <Outlet />
       <Footer />
       <WhatsAppFloat />
-      <CuelinksScript />
     </QueryClientProvider>
   );
 }
