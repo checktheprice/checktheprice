@@ -13,16 +13,22 @@ function inr(n: number | null): string {
 function OfferRow({
   offer,
   isLowest,
+  isSelected = false,
 }: {
   offer: CompareOffer;
   isLowest: boolean;
+  isSelected?: boolean;
 }) {
   const marketplace = getMarketplace(offer.url);
 
   return (
     <div
       className={`flex gap-3 rounded-xl border bg-card p-3 transition-shadow hover:shadow-md ${
-        isLowest ? "border-primary ring-1 ring-primary/40" : ""
+        isSelected
+          ? "border-primary/60 bg-primary/5 ring-1 ring-primary/30"
+          : isLowest
+            ? "border-primary ring-1 ring-primary/40"
+            : ""
       }`}
     >
       <div className="shrink-0">
@@ -47,9 +53,14 @@ function OfferRow({
             {marketplace !== "other" && (
               <MarketplaceLogo marketplace={marketplace} size="sm" />
             )}
-            {isLowest && (
+            {isSelected && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary">
+                <Pin className="h-3 w-3" /> Selected Product
+              </span>
+            )}
+            {isLowest && !isSelected && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground">
-                <Trophy className="h-3 w-3" /> Lowest
+                <Trophy className="h-3 w-3" /> Lowest Price
               </span>
             )}
           </div>
