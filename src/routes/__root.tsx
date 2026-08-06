@@ -13,7 +13,6 @@ import { Analytics } from "@vercel/analytics/react";
 import { Navbar } from "@/components/Navbar";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { Footer } from "@/components/Footer";
-import { CuelinksScript } from "@/components/CuelinksScript";
 
 function NotFoundComponent() {
   return (
@@ -129,6 +128,21 @@ function RootShell({ children }: { children: React.ReactNode }) {
         {children}
         <Scripts />
         <Analytics />
+        {/* Cuelinks v2 Auto Link Conversion */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              var cId = '303416';
+              (function(d, t) {
+                var s = document.createElement('script');
+                s.type = 'text/javascript';
+                s.async = true;
+                s.src = (document.location.protocol == 'https:' ? 'https://cdn0.cuelinks.com/js/' : 'http://cdn0.cuelinks.com/js/') + 'cuelinksv2.js';
+                document.getElementsByTagName('body')[0].appendChild(s);
+              }());
+            `,
+          }}
+        />
       </body>
     </html>
   );
@@ -143,7 +157,6 @@ function RootComponent() {
       <Outlet />
       <Footer />
       <WhatsAppFloat />
-      <CuelinksScript />
     </QueryClientProvider>
   );
 }
