@@ -23,7 +23,7 @@ import {
 } from "@/lib/scrape/firecrawl.server";
 
 /** Max parallel merchant-link resolutions per search. */
-const MAX_LINK_RESOLUTIONS = 10;
+const MAX_LINK_RESOLUTIONS = 2;
 
 function isUrl(input: string): boolean {
   return /^https?:\/\//i.test(input.trim());
