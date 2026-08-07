@@ -3,6 +3,11 @@
  * Turns a user query (product name OR Amazon/Flipkart product URL) into a
  * sorted, affiliate-aware list of comparison offers.
  *
+ * SerpApi (Google Shopping) is the PRIMARY provider. When it fails
+ * transiently (quota exceeded, rate limit, timeout, service unavailable) the
+ * Firecrawl fallback provider takes over; both feed the same matcher and
+ * result assembly, so the CompareResult contract never changes.
+ *
  * Buy links NEVER point at a Google Shopping redirect: every offer must carry a
  * real merchant product URL, resolved through the Google Immersive Product API
  * when the search result only exposes a Google link.
@@ -10,6 +15,7 @@
 import { buildCompareBuyLink, resolveMerchant } from "./merchants";
 import type { CompareOffer, CompareResult } from "./types";
 import { buildSignature, isSameProduct } from "./match";
+import { firecrawlFallbackOffers, hasFirecrawlKey } from "./firecrawl-search.server";
 import {
   collectStoreEntries,
   serpApiGoogleShopping,
@@ -290,8 +296,27 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
   }
 
   const res = await serpApiGoogleShopping(query);
-  if (res.error)
+  if (res.error) {
+    // Transient SerpApi failure (quota / 429 / timeout / unavailable):
+    // fall back to the Firecrawl provider. Configuration errors never
+    // trigger the fallback, and neither does a missing Firecrawl key.
+    if (res.fallbackEligible && hasFirecrawlKey()) {
+      console.log(
+        `[compare] provider=firecrawl_fallback reason="${res.error}" query="${query}"`,
+      );
+      try {
+        const candidates = await firecrawlFallbackOffers(
+          query,
+          selected ? [selected.url] : [],
+        );
+        return assembleResult({ query, resolvedFromUrl, selected, candidates });
+      } catch (e) {
+        console.error("[compare] firecrawl fallback failed", e);
+      }
+    }
     return { ...empty(res.error, query), resolvedFromUrl, selected };
+  }
+  console.log(`[compare] provider=serpapi query="${query}"`);
 
   const raw = [
     ...(res.shopping_results ?? []),
@@ -310,15 +335,34 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
     ...needsLookup.map(async (r) => ({ r, url: await resolveMerchantUrl(r) })),
   ]);
 
+  const candidates = resolved
+    .map(({ r, url }) => (url ? toOffer(r, url) : null))
+    .filter((o): o is CompareOffer => o !== null);
+
+  return assembleResult({ query, resolvedFromUrl, selected, candidates });
+}
+
+/**
+ * Shared result assembly for BOTH providers (SerpApi and the Firecrawl
+ * fallback): strict rule-based matching, dedupe, price sort and savings.
+ * Keeping this in one place guarantees an identical CompareResult shape
+ * regardless of where the offers came from.
+ */
+function assembleResult(args: {
+  query: string;
+  resolvedFromUrl: boolean;
+  selected: CompareOffer | null;
+  candidates: CompareOffer[];
+}): CompareResult {
+  const { query, resolvedFromUrl, selected, candidates } = args;
+
   const seen = new Set<string>();
   // Strict rule-based matching against the selected product (or the typed
   // query) — accessories, covers, chargers, other models/variants are dropped.
   const reference = buildSignature(selected?.title ?? query);
   if (selected) seen.add(offerKey(selected));
 
-  const offers = resolved
-    .map(({ r, url }) => (url ? toOffer(r, url) : null))
-    .filter((o): o is CompareOffer => o !== null)
+  const offers = candidates
     .filter((o) => isSameProduct(reference, o.title))
     .filter((o) => {
       const key = offerKey(o);
