@@ -309,7 +309,9 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
           query,
           selected ? [selected.url] : [],
         );
-        return assembleResult({ query, resolvedFromUrl, selected, candidates });
+        const result = assembleResult({ query, resolvedFromUrl, selected, candidates });
+        await persistSafely(result, "firecrawl_fallback");
+        return result;
       } catch (e) {
         console.error("[compare] firecrawl fallback failed", e);
       }
@@ -339,7 +341,26 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
     .map(({ r, url }) => (url ? toOffer(r, url) : null))
     .filter((o): o is CompareOffer => o !== null);
 
-  return assembleResult({ query, resolvedFromUrl, selected, candidates });
+  const result = assembleResult({ query, resolvedFromUrl, selected, candidates });
+  await persistSafely(result, "serpapi");
+  return result;
+}
+
+/**
+ * Persist matched offers into the existing deals/deal_price_history tables.
+ * Best-effort side effect: any failure (including missing Supabase env) is
+ * logged and swallowed so the compare API response is never affected.
+ */
+async function persistSafely(
+  result: CompareResult,
+  provider: "serpapi" | "firecrawl_fallback",
+): Promise<void> {
+  try {
+    const { persistCompareResult } = await import("./persist.server");
+    await persistCompareResult(result, provider);
+  } catch (e) {
+    console.error("[compare] persistence skipped", e);
+  }
 }
 
 /**
