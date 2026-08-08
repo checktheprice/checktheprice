@@ -29,6 +29,13 @@ export type SerpShoppingResult = {
 
 export type SerpShoppingResponse = {
   error?: string;
+  /**
+   * True when the failure is transient/provider-side (quota exceeded, rate
+   * limit, timeout, service unavailable) and the caller may fall back to the
+   * Firecrawl provider. Never set for configuration errors (missing/invalid
+   * API key), which the fallback must not mask.
+   */
+  fallbackEligible?: boolean;
   shopping_results?: SerpShoppingResult[];
   inline_shopping_results?: SerpShoppingResult[];
   immersive_products?: SerpShoppingResult[];
@@ -58,8 +65,21 @@ export type SerpImmersiveProductResponse = {
 
 const SERPAPI_ENDPOINT = "https://serpapi.com/search.json";
 
+/** Abort SerpApi requests that hang; a timeout counts as fallback-eligible. */
+const SERPAPI_TIMEOUT_MS = 15_000;
+
 export function hasSerpApiKey(): boolean {
   return Boolean(process.env["SERPAPI_API_KEY"]);
+}
+
+/** Quota / throttle phrases SerpApi puts in its JSON `error` field. */
+const TRANSIENT_ERROR_RE =
+  /quota|rate.?limit|too many requests|out of searches|searches per month|try again later/i;
+
+/** Transient provider failure → the Firecrawl fallback may take over. */
+function isTransientFailure(status: number, providerError?: string): boolean {
+  if (status === 429 || status >= 500) return true;
+  return Boolean(providerError && TRANSIENT_ERROR_RE.test(providerError));
 }
 
 /** Run a Google Shopping search for the Indian marketplace. */
@@ -85,6 +105,7 @@ export async function serpApiGoogleShopping(
   try {
     const res = await fetch(url.toString(), {
       headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(SERPAPI_TIMEOUT_MS),
     });
     const body = (await res.json().catch(() => null)) as
       | SerpShoppingResponse
@@ -97,12 +118,22 @@ export async function serpApiGoogleShopping(
           res.status === 401
             ? "Price comparison is temporarily unavailable (invalid API credentials)."
             : "Price comparison is temporarily unavailable. Please try again.",
+        fallbackEligible: isTransientFailure(res.status, body?.error),
       };
+    }
+    // A 200 body can still carry a quota/rate-limit error message.
+    if (body?.error && isTransientFailure(res.status, body.error)) {
+      console.error("[serpapi] provider error", body.error);
+      return { error: body.error, fallbackEligible: true };
     }
     return body ?? { error: "Empty response from the price provider." };
   } catch (e) {
+    // Network failure or SERPAPI_TIMEOUT_MS abort — both fallback-eligible.
     console.error("[serpapi] network error", e);
-    return { error: "Could not reach the price provider. Please try again." };
+    return {
+      error: "Could not reach the price provider. Please try again.",
+      fallbackEligible: true,
+    };
   }
 }
 
@@ -128,6 +159,7 @@ export async function serpApiImmersiveProduct(
   try {
     const res = await fetch(url.toString(), {
       headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(SERPAPI_TIMEOUT_MS),
     });
     const body = (await res.json().catch(() => null)) as
       | SerpImmersiveProductResponse
