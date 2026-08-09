@@ -14,7 +14,7 @@
  */
 import { buildCompareBuyLink, resolveMerchant } from "./merchants";
 import type { CompareOffer, CompareResult } from "./types";
-import { buildSignature, isSameProduct } from "./match";
+import { buildCompareQuery, buildSignature, isSameProduct } from "./match";
 import { firecrawlFallbackOffers, hasFirecrawlKey } from "./firecrawl-search.server";
 import {
   collectStoreEntries,
@@ -290,7 +290,14 @@ export async function comparePrices(rawQuery: string): Promise<CompareResult> {
         "Could not read the product name from that link. Try typing the product name instead.",
       );
     }
-    query = title;
+    // Send a SHORT, cross-store-friendly query to the provider instead of the
+    // full scraped title (too specific — often zero cross-store hits). The
+    // matcher still judges candidates against the FULL title via `selected`.
+    const concise = buildCompareQuery(title);
+    query = concise || title;
+    console.log(
+      `[compare] serpapi query normalized: "${query}" (from title "${title}")`,
+    );
     resolvedFromUrl = true;
     selected = buildSelectedOffer(input, title, product);
   }

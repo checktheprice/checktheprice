@@ -146,8 +146,7 @@ function variantValues(norm: string): string[] {
   while ((m = unitRe.exec(norm))) {
     let unit = m[2];
     if (unit === "inches" || unit === "in") unit = "inch";
-    if (unit === "litre" || unit === "liters" || unit === "liter" || unit === "ltr")
-      unit = "l";
+    if (unit === "litre" || unit === "liters" || unit === "liter" || unit === "ltr") unit = "l";
     if (unit === "gm") unit = "g";
     out.add(`${Number(m[1])}${unit}`);
   }
@@ -164,8 +163,7 @@ function modelTokens(norm: string): string[] {
   const skip = new Set(variantValues(norm));
   return tokens(norm).filter((t) => {
     if (STOPWORDS.has(t)) return false;
-    if (/^\d+(\.\d+)?(gb|tb|mb|ml|l|kg|g|inch|cm|mm|w|mah|mp|hz)$/.test(t))
-      return false;
+    if (/^\d+(\.\d+)?(gb|tb|mb|ml|l|kg|g|inch|cm|mm|w|mah|mp|hz)$/.test(t)) return false;
     if (skip.has(t)) return false;
     return /\d/.test(t) && t.length <= 12;
   });
@@ -193,10 +191,166 @@ export function buildSignature(title: string): ProductSignature {
   };
 }
 
+/**
+ * Marketing/filler words (beyond STOPWORDS) that never help cross-store
+ * discovery. Used only by buildCompareQuery — the matcher is unaffected.
+ */
+const MARKETING_TERMS = new Set([
+  "premium",
+  "imported",
+  "exclusive",
+  "branded",
+  "stylish",
+  "special",
+  "limited",
+  "super",
+  "sale",
+  "combo",
+  "warranty",
+  "guarantee",
+  "assured",
+  "certified",
+  "bestseller",
+  "bestselling",
+  "trending",
+  "upto",
+]);
+
+/** Unit words that must stay attached to a preceding bare number ("725 Watts"). */
+const UNIT_WORDS = new Set([
+  "w",
+  "watt",
+  "watts",
+  "gb",
+  "tb",
+  "mb",
+  "ml",
+  "l",
+  "ltr",
+  "litre",
+  "litres",
+  "liter",
+  "liters",
+  "kg",
+  "g",
+  "gm",
+  "inch",
+  "inches",
+  "cm",
+  "mm",
+  "ton",
+  "mah",
+  "mp",
+  "hz",
+  "channel",
+  "seater",
+  "kwh",
+]);
+
+/** Max descriptive (non-numeric) words kept in the provider query. */
+const QUERY_MAX_WORDS = 8;
+
+/**
+ * Build a SHORT, cross-store-friendly search query from a scraped product
+ * title: brand + product/model name + numeric specs (wattage, capacity,
+ * size, generation), with marketing filler and trailing "with/without …"
+ * qualifiers dropped. Case is preserved for display. Returns "" when the
+ * title yields too little signal — callers should fall back to the raw title.
+ *
+ * The strict matcher stays the sole judge of whether a returned candidate is
+ * the same product; this only widens provider recall.
+ */
+export function buildCompareQuery(rawTitle: string): string {
+  // Clause 0 (before the first comma/parenthesis/pipe) carries the product
+  // name; later clauses are variant/feature lists that only contribute
+  // unit-bearing specs ("725 Watts", "8GB", "5.2.4 Channel").
+  const clauses = (rawTitle ?? "")
+    .replace(/["'`’]/g, "")
+    .split(/[|(){}[\],:;!?]+/)
+    .map((c) =>
+      c
+        .replace(/[-_/+]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+  if (clauses.length === 0) return "";
+
+  const kept: string[] = [];
+  const seenNumeric = new Set<string>();
+
+  const pushNumeric = (tok: string): boolean => {
+    const norm = tok.toLowerCase();
+    if (seenNumeric.has(norm)) return false;
+    seenNumeric.add(norm);
+    kept.push(tok);
+    return true;
+  };
+
+  // --- Main clause: brand + product/model name + inline specs. ---
+  let descriptiveDone = false;
+  let prevKept = "";
+  let prevBareNumber = false;
+  for (const tok of clauses[0].split(" ")) {
+    const norm = tok.toLowerCase();
+
+    // "with/without …" starts a qualifier ("Without Cable"): stop collecting
+    // descriptive words, but keep any numeric specs that still follow.
+    if (norm === "with" || norm === "without") {
+      descriptiveDone = true;
+      prevBareNumber = false;
+      continue;
+    }
+    if (/\d/.test(norm)) {
+      prevBareNumber = pushNumeric(tok) && /^\d+(\.\d+)*$/.test(norm);
+      continue;
+    }
+    if (prevBareNumber && UNIT_WORDS.has(norm)) {
+      kept.push(tok); // keep the unit glued to its number: "725 Watts"
+      prevBareNumber = false;
+      continue;
+    }
+    prevBareNumber = false;
+    if (descriptiveDone || STOPWORDS.has(norm) || MARKETING_TERMS.has(norm)) {
+      continue;
+    }
+    // Single letters survive only as uppercase suffixes: "Type C", "DTS X".
+    if (norm.length === 1 && !(tok === tok.toUpperCase() && prevKept !== "")) {
+      continue;
+    }
+    if (kept.filter((k) => !/\d/.test(k)).length < QUERY_MAX_WORDS) {
+      kept.push(tok);
+      prevKept = tok;
+    }
+  }
+
+  // --- Later clauses: unit-bearing specs only. ---
+  for (const clause of clauses.slice(1)) {
+    const toks = clause.split(" ");
+    for (let i = 0; i < toks.length; i++) {
+      const norm = toks[i].toLowerCase();
+      // "8GB", "25W", "1.5Ton" — number fused with its unit.
+      if (/^\d+(\.\d+)*[a-z]+$/.test(norm)) {
+        pushNumeric(toks[i]);
+        continue;
+      }
+      // "725 Watts", "5.2.4 Channel" — bare number followed by a unit word.
+      if (
+        /^\d+(\.\d+)*$/.test(norm) &&
+        i + 1 < toks.length &&
+        UNIT_WORDS.has(toks[i + 1].toLowerCase())
+      ) {
+        if (pushNumeric(toks[i])) kept.push(toks[i + 1]);
+        i++;
+      }
+    }
+  }
+
+  return kept.length >= 2 ? kept.join(" ") : "";
+}
+
 function hasAny(norm: string, terms: string[]): boolean {
-  return terms.some((t) =>
-    t.includes(" ") ? norm.includes(t) : tokens(norm).includes(t),
-  );
+  return terms.some((t) => (t.includes(" ") ? norm.includes(t) : tokens(norm).includes(t)));
 }
 
 /**
@@ -204,20 +358,14 @@ function hasAny(norm: string, terms: string[]): boolean {
  * Strict by design: brand, model, category-ish wording and variant must agree,
  * and accessories / compatible / replacement listings are always rejected.
  */
-export function isSameProduct(
-  reference: ProductSignature,
-  candidateTitle: string,
-): boolean {
+export function isSameProduct(reference: ProductSignature, candidateTitle: string): boolean {
   const cand = buildSignature(candidateTitle);
   if (!cand.norm) return false;
 
   // 1. Accessory / compatibility exclusions (unless the reference itself is one).
   const refAccessory = hasAny(reference.norm, ACCESSORY_TERMS);
   if (!refAccessory && hasAny(cand.norm, ACCESSORY_TERMS)) return false;
-  if (
-    !hasAny(reference.norm, COMPATIBILITY_TERMS) &&
-    hasAny(cand.norm, COMPATIBILITY_TERMS)
-  ) {
+  if (!hasAny(reference.norm, COMPATIBILITY_TERMS) && hasAny(cand.norm, COMPATIBILITY_TERMS)) {
     return false;
   }
 
