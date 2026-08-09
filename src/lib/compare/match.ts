@@ -137,18 +137,31 @@ function meaningfulTokens(norm: string): string[] {
   return tokens(norm).filter((t) => t.length > 1 && !STOPWORDS.has(t));
 }
 
+/** Unit words that may follow a bare number ("725 Watts", "55 inch"). */
+const UNIT_WORD_RE =
+  /^(gb|tb|mb|ml|ltr|litre|liters?|litres?|l|kg|gm|g|inch|inches|in|cm|mm|ton|watts?|w|mah|mp|hz|seater|kwh)$/;
+
 /** Capacity / size style variants: 128gb, 8 gb, 1tb, 55 inch, 1.5 ton, 500ml. */
 function variantValues(norm: string): string[] {
   const out = new Set<string>();
+  // "watts?" (plural included) so "725 Watts", "725 Watt" and "725 W" all
+  // normalize to the same variant value.
   const unitRe =
-    /(\d+(?:\.\d+)?)\s?(gb|tb|mb|ml|ltr|litre|liters?|l|kg|gm|g|inch|inches|in|cm|mm|ton|watt|w|mah|mp|hz|seater|kwh)\b/g;
+    /(\d+(?:\.\d+)?)\s?(gb|tb|mb|ml|ltr|litre|litres|liters?|l|kg|gm|g|inch|inches|in|cm|mm|ton|watts?|w|mah|mp|hz|seater|kwh)\b/g;
   let m: RegExpExecArray | null;
   while ((m = unitRe.exec(norm))) {
     let unit = m[2];
     if (unit === "inches" || unit === "in") unit = "inch";
-    if (unit === "litre" || unit === "liters" || unit === "liter" || unit === "ltr")
+    if (
+      unit === "litre" ||
+      unit === "litres" ||
+      unit === "liters" ||
+      unit === "liter" ||
+      unit === "ltr"
+    )
       unit = "l";
     if (unit === "gm") unit = "g";
+    if (unit === "watt" || unit === "watts") unit = "w";
     out.add(`${Number(m[1])}${unit}`);
   }
   return [...out];
@@ -162,11 +175,17 @@ function colorValues(norm: string): string[] {
 /** Tokens that identify a specific model / generation, e.g. "s24", "15", "pro". */
 function modelTokens(norm: string): string[] {
   const skip = new Set(variantValues(norm));
-  return tokens(norm).filter((t) => {
+  const all = tokens(norm);
+  return all.filter((t, i) => {
     if (STOPWORDS.has(t)) return false;
-    if (/^\d+(\.\d+)?(gb|tb|mb|ml|l|kg|g|inch|cm|mm|w|mah|mp|hz)$/.test(t))
-      return false;
+    if (/^\d+(\.\d+)?(gb|tb|mb|ml|l|kg|g|inch|cm|mm|w|mah|mp|hz)$/.test(t)) return false;
     if (skip.has(t)) return false;
+    // Multiplier feature tokens ("2x Subwoofer") are not model identifiers.
+    if (/^\d+x$/.test(t)) return false;
+    // A bare number followed by its unit word is a spec ("725 Watts"),
+    // already captured by variantValues — not a mandatory model token.
+    if (/^\d+(\.\d+)?$/.test(t) && i + 1 < all.length && UNIT_WORD_RE.test(all[i + 1]))
+      return false;
     return /\d/.test(t) && t.length <= 12;
   });
 }
@@ -180,23 +199,53 @@ export type ProductSignature = {
   words: string[];
 };
 
+/**
+ * The MAIN product clause of a raw title: everything before the first
+ * comma/pipe/semicolon/colon, with parenthetical/bracketed asides removed and
+ * "for …" compatibility tails ("for Galaxy S10/M54/M55/A80") cut off. This is
+ * where the brand and the genuine model name live; later clauses are feature
+ * lists and compatibility text that must not produce mandatory identifiers.
+ */
+function mainClause(rawTitle: string): string {
+  return (rawTitle ?? "")
+    .replace(/\([^)]*\)|\[[^\]]*\]/g, " ")
+    .split(/[|,;:]/)[0]
+    .split(/\bfor\b/i)[0]
+    .trim();
+}
+
+/**
+ * Spec-style tokens (pure numbers, fused number+unit, unit words) are kept
+ * out of the Rule 6 overlap words: variants are already enforced exactly by
+ * Rule 4 and numeric model identifiers by Rule 3, so counting them again in
+ * word overlap only penalizes spelling differences ("725W" vs "725 Watt").
+ */
+function isSpecToken(t: string): boolean {
+  return /^\d+(\.\d+)*$/.test(t) || /^\d+(\.\d+)?[a-z]+$/.test(t) || UNIT_WORD_RE.test(t);
+}
+
 export function buildSignature(title: string): ProductSignature {
   const norm = normalizeTitle(title);
-  const words = meaningfulTokens(norm);
+  // Model tokens and overlap words come from the main clause only, so
+  // compatibility lists and feature clauses can't pollute the reference
+  // signature. Variants and colors stay strict (harvested from the FULL
+  // title). Falls back to the full title when the main clause is too thin.
+  const mainNorm = normalizeTitle(mainClause(title));
+  const mainWords = meaningfulTokens(mainNorm);
+  const useMain = mainWords.length >= 2;
+  const allWords = useMain ? mainWords : meaningfulTokens(norm);
   return {
     norm,
-    brand: words[0] ?? null,
-    models: modelTokens(norm),
+    brand: allWords[0] ?? null,
+    models: modelTokens(useMain ? mainNorm : norm),
     variants: variantValues(norm),
     colors: colorValues(norm),
-    words,
+    words: allWords.filter((w) => !isSpecToken(w)),
   };
 }
 
 function hasAny(norm: string, terms: string[]): boolean {
-  return terms.some((t) =>
-    t.includes(" ") ? norm.includes(t) : tokens(norm).includes(t),
-  );
+  return terms.some((t) => (t.includes(" ") ? norm.includes(t) : tokens(norm).includes(t)));
 }
 
 /**
@@ -204,20 +253,14 @@ function hasAny(norm: string, terms: string[]): boolean {
  * Strict by design: brand, model, category-ish wording and variant must agree,
  * and accessories / compatible / replacement listings are always rejected.
  */
-export function isSameProduct(
-  reference: ProductSignature,
-  candidateTitle: string,
-): boolean {
+export function isSameProduct(reference: ProductSignature, candidateTitle: string): boolean {
   const cand = buildSignature(candidateTitle);
   if (!cand.norm) return false;
 
   // 1. Accessory / compatibility exclusions (unless the reference itself is one).
   const refAccessory = hasAny(reference.norm, ACCESSORY_TERMS);
   if (!refAccessory && hasAny(cand.norm, ACCESSORY_TERMS)) return false;
-  if (
-    !hasAny(reference.norm, COMPATIBILITY_TERMS) &&
-    hasAny(cand.norm, COMPATIBILITY_TERMS)
-  ) {
+  if (!hasAny(reference.norm, COMPATIBILITY_TERMS) && hasAny(cand.norm, COMPATIBILITY_TERMS)) {
     return false;
   }
 
@@ -240,9 +283,11 @@ export function isSameProduct(
     if (!shared) return false;
   }
 
-  // 6. General wording overlap keeps the category the same.
+  // 6. General wording overlap keeps the category the same. The reference
+  // words come from its main clause; the candidate side uses its FULL title
+  // so reference words are found wherever the other store placed them.
   if (reference.words.length >= 2) {
-    const candSet = new Set(cand.words);
+    const candSet = new Set(meaningfulTokens(cand.norm));
     const overlap = reference.words.filter((w) => candSet.has(w)).length;
     if (overlap / reference.words.length < 0.55) return false;
   }
