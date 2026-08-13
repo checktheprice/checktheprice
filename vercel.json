@@ -3,6 +3,10 @@
     {
       "path": "/api/public/cron/refresh-deals",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/public/cron/refresh-sheet-prices",
+      "schedule": "0 3 * * *"
     }
   ]
 }
