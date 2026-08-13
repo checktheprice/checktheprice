@@ -4,10 +4,16 @@ import { normalizeItem, type NormalizedProduct, type CreatorsItem } from "./norm
 import { throttled, withRetry } from "./throttle";
 import { cacheGet, cacheSet } from "./cache";
 
+type CreatorsApiError = { code?: string; message?: string; type?: string };
+
 type CreatorsGetItemsResponse = {
+  // Current Creators API shape.
+  itemsResult?: { items?: CreatorsItem[] };
+  // Older / alternate shapes kept for backwards compatibility.
   itemResults?: { items?: CreatorsItem[] };
   ItemsResult?: { Items?: CreatorsItem[] };
-  errors?: Array<{ code?: string; message?: string }>;
+  errors?: CreatorsApiError[];
+  Errors?: CreatorsApiError[];
 };
 
 const BATCH = 10; // Creators API GetItems hard limit
@@ -19,7 +25,17 @@ function chunk<T>(arr: T[], n: number): T[][] {
 }
 
 function itemsOf(data: CreatorsGetItemsResponse): CreatorsItem[] {
-  return data.itemResults?.items ?? data.ItemsResult?.Items ?? [];
+  return data.itemsResult?.items ?? data.itemResults?.items ?? data.ItemsResult?.Items ?? [];
+}
+
+function logErrors(op: string, batch: string[], data: CreatorsGetItemsResponse): CreatorsApiError[] {
+  const errors = data.errors ?? data.Errors ?? [];
+  for (const e of errors) {
+    console.error(
+      `[amazon] ${op} error code=${e.code ?? e.type ?? "unknown"} message=${e.message ?? "n/a"} asins=${batch.join(",")}`,
+    );
+  }
+  return errors;
 }
 
 export async function getItems(asins: string[]): Promise<NormalizedProduct[]> {
@@ -35,6 +51,7 @@ export async function getItems(asins: string[]): Promise<NormalizedProduct[]> {
   }
 
   for (const batch of chunk(missing, BATCH)) {
+    console.log(`[amazon] GetItems requesting ${batch.length} ASIN(s): ${batch.join(",")}`);
     const data = await throttled("GetItems", () =>
       withRetry(() =>
         creatorsRequest<CreatorsGetItemsResponse>("GetItems", {
@@ -44,9 +61,26 @@ export async function getItems(asins: string[]): Promise<NormalizedProduct[]> {
         }),
       ),
     );
-    for (const item of itemsOf(data)) {
+
+    const errors = logErrors("GetItems", batch, data);
+    const items = itemsOf(data);
+    console.log(`[amazon] GetItems returned ${items.length} item(s) for ${batch.length} ASIN(s)`);
+
+    // Never let a hard API failure masquerade as "zero products found".
+    if (items.length === 0 && errors.length > 0) {
+      const first = errors[0];
+      const err = new Error(
+        `Creators API GetItems failed: ${first.code ?? first.type ?? "unknown"} - ${first.message ?? "no message"}`,
+      );
+      throw err;
+    }
+
+    for (const item of items) {
       const n = normalizeItem(item);
-      if (!n.asin) continue;
+      if (!n.asin) {
+        console.warn("[amazon] GetItems item without ASIN skipped");
+        continue;
+      }
       cacheSet(`getitems:${n.asin}`, n);
       results.push(n);
     }
