@@ -13,7 +13,7 @@ function env(name: string): string {
   return v;
 }
 
-/** e.g. "v3.2" -> "3.2" (the Authorization header wants the bare number). */
+/** e.g. "v3.2" -> "3.2" (used to pick the OAuth token endpoint). */
 function credentialVersion(): string {
   const raw = process.env.AMAZON_CREDENTIAL_VERSION ?? "v3.2";
   return raw.trim().replace(/^v/i, "");
@@ -125,7 +125,9 @@ export async function creatorsRequest<T>(
   const res = await fetch(`${BASE_URL}${pathFor(op)}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}, Version ${credentialVersion()}`,
+      // Creators API expects a plain bearer token; the credential Version only
+      // selects the token endpoint (see tokenEndpoint()).
+      Authorization: `Bearer ${token}`,
       "content-type": "application/json",
       "x-marketplace": mp,
     },
