@@ -44,11 +44,14 @@ export async function applyUpdate(deal: DealRow, live: NormalizedProduct): Promi
       .from("deals")
       .update({ last_checked_at: new Date().toISOString() })
       .eq("id", deal.id);
+    console.warn(`[amazon] deal ${deal.id} asin=${live.asin} skipped: Amazon returned no usable price`);
     return { dealId: deal.id, asin: live.asin, status: "skipped", reason: "no live price" };
   }
 
   const newPrice = Math.round(live.currentPrice * 100) / 100;
-  const newMrp = live.listPrice != null && live.listPrice > 0 ? Math.round(live.listPrice * 100) / 100 : deal.mrp;
+  // Admin-set MRP wins; only fall back to Amazon's list price when the deal has none.
+  const amazonMrp = live.listPrice != null && live.listPrice > 0 ? Math.round(live.listPrice * 100) / 100 : null;
+  const newMrp = Number(deal.mrp) > 0 ? Number(deal.mrp) : (amazonMrp ?? Number(deal.mrp));
   const priceChanged = Number(deal.price) !== newPrice;
 
   const metadata = {
@@ -90,14 +93,18 @@ export async function applyUpdate(deal: DealRow, live: NormalizedProduct): Promi
     standard_link?: string;
   };
 
-  // Only fill title/image when Amazon actually returned something.
-  if (live.title) patch.title = live.title;
-  if (live.image) patch.image = live.image;
+  // Admin-managed content is never overwritten; only backfill when empty.
+  if (!deal.title && live.title) patch.title = live.title;
+  if (!deal.image && live.image) patch.image = live.image;
   if (!deal.affiliate_link || deal.affiliate_link === "#") patch.affiliate_link = live.affiliateLink;
   if (!deal.standard_link) patch.standard_link = live.standardLink;
 
   const { error } = await supabaseAdmin.from("deals").update(patch).eq("id", deal.id);
   if (error) throw new Error(`deals update failed: ${error.message}`);
+
+  console.log(
+    `[amazon] deal ${deal.id} asin=${live.asin} price ${deal.price} -> ${newPrice} (mrp ${newMrp}, changed=${priceChanged})`,
+  );
 
   if (priceChanged) {
     // Append-only history; never overwritten.
@@ -134,7 +141,13 @@ export async function hydrateDeal(dealId: string): Promise<ApplyResult> {
 }
 
 /** Refresh the least-recently-checked Amazon deals. */
-export async function refreshBatch(limit = 30): Promise<{ checked: number; results: ApplyResult[] }> {
+export async function refreshBatch(limit = 30): Promise<{
+  checked: number;
+  updated: number;
+  skipped: number;
+  withoutAsin: number;
+  results: ApplyResult[];
+}> {
   const { data, error } = await supabaseAdmin
     .from("deals")
     .select(DEAL_COLUMNS)
@@ -148,7 +161,17 @@ export async function refreshBatch(limit = 30): Promise<{ checked: number; resul
     .map((d) => ({ deal: d, asin: asinFor(d) }))
     .filter((x): x is { deal: DealRow; asin: string } => Boolean(x.asin));
 
-  if (withAsin.length === 0) return { checked: 0, results: [] };
+  const withoutAsin = deals.filter((d) => !asinFor(d));
+  for (const d of withoutAsin) {
+    console.warn(`[amazon] deal ${d.id} skipped: no valid ASIN (source=${d.source ?? "unknown"})`);
+  }
+  console.log(
+    `[amazon] refresh selected ${deals.length} deal(s); ${withAsin.length} with ASIN, ${withoutAsin.length} skipped`,
+  );
+
+  if (withAsin.length === 0) {
+    return { checked: 0, updated: 0, skipped: 0, withoutAsin: withoutAsin.length, results: [] };
+  }
 
   const lives = await getItems(withAsin.map((x) => x.asin));
   const byAsin = new Map(lives.map((l) => [l.asin, l]));
@@ -167,5 +190,15 @@ export async function refreshBatch(limit = 30): Promise<{ checked: number; resul
     }
   }
 
-  return { checked: results.length, results };
+  const updated = results.filter((r) => r.status === "updated" || r.status === "price-changed").length;
+  const skipped = results.filter((r) => r.status === "skipped").length;
+  console.log(`[amazon] refresh finished: ${updated} updated, ${skipped} skipped, ${withoutAsin.length} without ASIN`);
+
+  return {
+    checked: results.length,
+    updated,
+    skipped,
+    withoutAsin: withoutAsin.length,
+    results: [...results, ...withoutAsin.map((d) => ({ dealId: d.id, asin: null, status: "skipped" as const, reason: "no ASIN" }))],
+  };
 }
