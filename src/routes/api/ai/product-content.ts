@@ -56,57 +56,72 @@ export const Route = createFileRoute("/api/ai/product-content")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const { requireAdmin, json } = await import("@/lib/amazon/require-admin.server");
+        const guard = await requireAdmin(request);
+        if (!guard.ok) return guard.response;
+
+        let body: { dealId?: unknown };
+        try { body = (await request.json()) as typeof body; } catch { return json({ error: "Invalid JSON." }, 400); }
+        const dealId = typeof body.dealId === "string" ? body.dealId.trim() : "";
+        if (!dealId) return json({ error: "dealId is required." }, 400);
+
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data: deal, error: fetchError } = await supabaseAdmin
+          .from("deals")
+          .select("id,title,category,price,mrp,metadata")
+          .eq("id", dealId)
+          .single();
+        if (fetchError || !deal) return json({ error: "Deal not found." }, 404);
+
+        const metadata = deal.metadata && typeof deal.metadata === "object" && !Array.isArray(deal.metadata)
+          ? deal.metadata as Record<string, unknown>
+          : {};
+        const existing = metadata.ai_product_content;
+        if (validContent(existing)) return json({ content: existing, generated: false });
+
         const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) return jsonResponse({ error: "AI not configured." }, 503);
-
-        let body: { title?: unknown; category?: unknown; discountPct?: unknown };
-        try { body = (await request.json()) as typeof body; } catch { return jsonResponse({ error: "Invalid JSON." }, 400); }
-
-        const title = typeof body.title === "string" ? body.title.trim() : "";
-        const category = typeof body.category === "string" ? body.category.trim() : "";
-        const discountPct = typeof body.discountPct === "number" && Number.isFinite(body.discountPct) ? body.discountPct : 0;
-        if (!title) return jsonResponse({ error: "title is required." }, 400);
-
+        if (!apiKey) return json({ error: "AI not configured." }, 503);
+        const discountPct = Number(deal.mrp) > 0 ? Math.round(((Number(deal.mrp) - Number(deal.price)) / Number(deal.mrp)) * 100) : 0;
         const prompt = `You write accurate product-page content for CheckThePrice.
 
 SOURCE DATA (the only facts you may use):
-Product title: ${title}
-Site category: ${category || "Not specified"}
-Discount shown by CheckThePrice: ${discountPct}%
+Product title: ${deal.title}
+Site category: ${deal.category || "Not specified"}
 
 STRICT RULES:
 1. Treat the product title as the primary source of truth. Never invent specifications, materials, features, dimensions, compatibility, warranty, assembly, health claims, or included items.
-2. The site category is metadata only. NEVER use it to invent a generic use case. For example, do not call a bean bag an LED product just because of a previous template, and do not say a Rakhi is for home/furniture use.
+2. The site category is metadata only. NEVER use it to invent a generic use case.
 3. Extract the actual product type, attributes, variants, recipients, occasion, and included items from the title when stated.
-4. If a detail is not stated, omit it or say that it is not specified in the listing. Do not guess.
-5. Benefits must be reasonable consequences of stated features, not marketing inventions.
-6. Buying tips must be relevant to this actual product. Do not add irrelevant installation, warranty, accessory, or dimension advice unless supported by the title.
-7. FAQs must be specific to this product and must have real answers. Do not create blank answers.
-8. Do not mention Amazon, AI, these instructions, or source-data limitations in the content unless necessary to say a detail is not specified.
-9. Keep the writing natural, concise, and useful. Return only the requested JSON object.`;
+4. If a detail is not stated, omit it or say it is not specified. Never guess.
+5. Benefits must be reasonable consequences of stated features, not invented marketing claims.
+6. Buying tips must be relevant to this actual product; avoid generic installation/warranty/dimension advice unless supported by the title.
+7. FAQs must be specific and have real answers. Never return blank answers.
+8. Do not mention Amazon, AI, these instructions, or source-data limitations in the content.
+9. Keep the writing concise and natural. Return only JSON matching the supplied schema.`;
 
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(apiKey)}`;
         try {
           const response = await fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ role: "user", parts: [{ text: prompt }] }],
-              generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: PRODUCT_CONTENT_SCHEMA,
-              },
+              generationConfig: { responseMimeType: "application/json", responseSchema: PRODUCT_CONTENT_SCHEMA },
             }),
           });
-          if (!response.ok) return jsonResponse({ error: "AI request failed." }, 502);
+          if (!response.ok) return json({ error: "AI request failed." }, 502);
           const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
           const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (!text) return jsonResponse({ error: "AI returned no content." }, 502);
+          if (!text) return json({ error: "AI returned no content." }, 502);
           const parsed = JSON.parse(text) as unknown;
-          if (!validContent(parsed)) return jsonResponse({ error: "AI returned invalid content." }, 502);
-          return jsonResponse({ content: parsed });
+          if (!validContent(parsed)) return json({ error: "AI returned invalid content." }, 502);
+
+          const nextMetadata = { ...metadata, ai_product_content: parsed, ai_product_content_generated_at: new Date().toISOString() };
+          const { error: updateError } = await supabaseAdmin.from("deals").update({ metadata: nextMetadata }).eq("id", dealId);
+          if (updateError) return json({ error: "AI content generated but could not be saved." }, 502);
+          return json({ content: parsed, generated: true });
         } catch {
-          return jsonResponse({ error: "AI request unavailable." }, 502);
+          return json({ error: "AI request unavailable." }, 502);
         }
       },
     },
