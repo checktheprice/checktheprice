@@ -7,11 +7,8 @@ import { getMarketplace } from "@/lib/marketplace";
 import { useEffect, useMemo, useState } from "react";
 import { slugifyTitle, type Deal, calcDiscount } from "@/lib/deals";
 import { fetchAllDeals } from "@/lib/all-deals";
-import {
-  generateSeoContent,
-  getSeoContent,
-  formatUpdatedAgo,
-} from "@/lib/seo-content";
+import { getProductPageContent } from "@/lib/product-content.functions";
+import { generateSeoContent, getSeoContent, formatUpdatedAgo } from "@/lib/seo-content";
 
 const dealsQueryOptions = queryOptions({
   queryKey: ["all-deals"],
@@ -21,15 +18,6 @@ const dealsQueryOptions = queryOptions({
   retry: 1,
 });
 
-/**
- * Resolve a deal from a URL slug.
- *
- * Primary match is the exact `slugifyTitle` output used by RSS, the sitemap and
- * every internal link, so those URLs always resolve. The fallbacks make the
- * route tolerant of slugs that were generated before/after a title edit or that
- * were truncated differently (slugifyTitle caps at 80 chars), instead of
- * 404-ing a deal that exists in the feed.
- */
 function findDeal(deals: Deal[], slug: string): Deal | undefined {
   const wanted = slug.toLowerCase().replace(/^-+|-+$/g, "");
   if (!wanted) return undefined;
@@ -55,17 +43,35 @@ export const Route = createFileRoute("/deal/$slug")({
     const deals = await context.queryClient.ensureQueryData(dealsQueryOptions);
     const deal = findDeal(deals, params.slug);
     if (!deal) throw notFound();
+
     const discountPct =
       deal.mrp > 0
         ? Math.round(((deal.mrp - deal.onlinePrice) / deal.mrp) * 100)
         : 0;
-    // Deterministic — same title always yields same content.
-    const seo = generateSeoContent(deal.title, deal.category, discountPct);
+    const fallbackSeo = generateSeoContent(deal.title, deal.category, discountPct);
+
+    // Gemini runs only through a server function. For database-backed products,
+    // generated content is stored in the existing metadata JSON and reused.
+    // If AI is unavailable, keep the existing page content as the safe fallback.
+    let aiContent = null;
+    try {
+      aiContent = await getProductPageContent({
+        data: {
+          dealId: deal.id,
+          title: deal.title,
+          category: deal.category,
+        },
+      });
+    } catch {
+      aiContent = null;
+    }
+
     return {
       slug: params.slug,
       title: deal.title,
-      metaDescription: seo.metaDescription,
+      metaDescription: aiContent?.metaDescription ?? fallbackSeo.metaDescription,
       image: deal.image,
+      aiContent,
     };
   },
   head: ({ params, loaderData }) => {
@@ -134,6 +140,7 @@ function DealNotFound() {
 
 function DealPage() {
   const { slug } = Route.useParams();
+  const loaderData = Route.useLoaderData();
   const { data } = useSuspenseQuery(dealsQueryOptions);
   const deal = findDeal(data, slug);
   const [alertDeal, setAlertDeal] = useState<Deal | null>(null);
@@ -152,10 +159,11 @@ function DealPage() {
   const discountPct = deal ? calcDiscount(deal.mrp, deal.onlinePrice) : 0;
   const seo = useMemo(
     () =>
-      deal
+      loaderData?.aiContent ??
+      (deal
         ? getSeoContent(deal.title, deal.category, discountPct)
-        : null,
-    [deal, discountPct],
+        : null),
+    [deal, discountPct, loaderData?.aiContent],
   );
 
   if (!deal || !seo) return <DealNotFound />;
@@ -196,7 +204,6 @@ function DealPage() {
         ← Back to all deals
       </Link>
 
-      {/* H1 + marketplace logo */}
       <div className="mt-3 flex items-center gap-3">
         <h1 className="text-2xl font-extrabold leading-tight text-foreground sm:text-3xl">
           {deal.title}
@@ -221,75 +228,50 @@ function DealPage() {
         <DealCard deal={deal} onAlert={setAlertDeal} />
       </div>
 
-      {/* SEO content */}
       <article className="mt-8 space-y-8 text-[15px] leading-relaxed text-foreground">
         <section aria-labelledby="about-heading">
-          <h2
-            id="about-heading"
-            className="text-lg font-bold tracking-tight text-foreground"
-          >
+          <h2 id="about-heading" className="text-lg font-bold tracking-tight text-foreground">
             About the {deal.title}
           </h2>
           <p className="mt-2 text-muted-foreground">{seo.description}</p>
         </section>
 
         <section aria-labelledby="features-heading">
-          <h2
-            id="features-heading"
-            className="text-lg font-bold tracking-tight text-foreground"
-          >
+          <h2 id="features-heading" className="text-lg font-bold tracking-tight text-foreground">
             Key features
           </h2>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-            {seo.features.map((f) => (
-              <li key={f}>{f}</li>
-            ))}
+            {seo.features.map((f) => <li key={f}>{f}</li>)}
           </ul>
         </section>
 
         <section aria-labelledby="benefits-heading">
-          <h2
-            id="benefits-heading"
-            className="text-lg font-bold tracking-tight text-foreground"
-          >
+          <h2 id="benefits-heading" className="text-lg font-bold tracking-tight text-foreground">
             Main benefits
           </h2>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-            {seo.benefits.map((b) => (
-              <li key={b}>{b}</li>
-            ))}
+            {seo.benefits.map((b) => <li key={b}>{b}</li>)}
           </ul>
         </section>
 
         <section aria-labelledby="who-heading">
-          <h2
-            id="who-heading"
-            className="text-lg font-bold tracking-tight text-foreground"
-          >
+          <h2 id="who-heading" className="text-lg font-bold tracking-tight text-foreground">
             Who should buy this?
           </h2>
           <p className="mt-2 text-muted-foreground">{seo.whoShouldBuy}</p>
         </section>
 
         <section aria-labelledby="tips-heading">
-          <h2
-            id="tips-heading"
-            className="text-lg font-bold tracking-tight text-foreground"
-          >
+          <h2 id="tips-heading" className="text-lg font-bold tracking-tight text-foreground">
             Buying tips
           </h2>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-            {seo.buyingTips.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
+            {seo.buyingTips.map((t) => <li key={t}>{t}</li>)}
           </ul>
         </section>
 
         <section aria-labelledby="faq-heading">
-          <h2
-            id="faq-heading"
-            className="text-lg font-bold tracking-tight text-foreground"
-          >
+          <h2 id="faq-heading" className="text-lg font-bold tracking-tight text-foreground">
             Frequently asked questions
           </h2>
           <div className="mt-3 divide-y rounded-xl border bg-white">
@@ -305,14 +287,8 @@ function DealPage() {
         </section>
       </article>
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       {alertDeal && (
         <PriceAlertModal
