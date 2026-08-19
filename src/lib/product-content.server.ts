@@ -10,28 +10,38 @@ export interface ProductContent {
   faqs: { q: string; a: string }[];
 }
 
+// Gemini's responseSchema uses the Generative Language API Schema enum values.
 const PRODUCT_CONTENT_SCHEMA = {
-  type: "object",
+  type: "OBJECT",
   properties: {
-    metaDescription: { type: "string" },
-    description: { type: "string" },
-    features: { type: "array", items: { type: "string" }, maxItems: 7 },
-    benefits: { type: "array", items: { type: "string" }, maxItems: 5 },
-    whoShouldBuy: { type: "string" },
-    buyingTips: { type: "array", items: { type: "string" }, maxItems: 4 },
+    metaDescription: { type: "STRING" },
+    description: { type: "STRING" },
+    features: { type: "ARRAY", items: { type: "STRING" }, maxItems: 7 },
+    benefits: { type: "ARRAY", items: { type: "STRING" }, maxItems: 5 },
+    whoShouldBuy: { type: "STRING" },
+    buyingTips: { type: "ARRAY", items: { type: "STRING" }, maxItems: 4 },
     faqs: {
-      type: "array",
+      type: "ARRAY",
       maxItems: 4,
       items: {
-        type: "object",
-        properties: { q: { type: "string" }, a: { type: "string" } },
+        type: "OBJECT",
+        properties: {
+          q: { type: "STRING" },
+          a: { type: "STRING" },
+        },
         required: ["q", "a"],
-        additionalProperties: false,
       },
     },
   },
-  required: ["metaDescription", "description", "features", "benefits", "whoShouldBuy", "buyingTips", "faqs"],
-  additionalProperties: false,
+  required: [
+    "metaDescription",
+    "description",
+    "features",
+    "benefits",
+    "whoShouldBuy",
+    "buyingTips",
+    "faqs",
+  ],
 };
 
 function isProductContent(value: unknown): value is ProductContent {
@@ -44,7 +54,14 @@ function isProductContent(value: unknown): value is ProductContent {
     Array.isArray(v.benefits) && v.benefits.every((x) => typeof x === "string") &&
     typeof v.whoShouldBuy === "string" &&
     Array.isArray(v.buyingTips) && v.buyingTips.every((x) => typeof x === "string") &&
-    Array.isArray(v.faqs) && v.faqs.every((x) => !!x && typeof x === "object" && typeof (x as { q?: unknown }).q === "string" && typeof (x as { a?: unknown }).a === "string")
+    Array.isArray(v.faqs) &&
+    v.faqs.every(
+      (x) =>
+        !!x &&
+        typeof x === "object" &&
+        typeof (x as { q?: unknown }).q === "string" &&
+        typeof (x as { a?: unknown }).a === "string",
+    )
   );
 }
 
@@ -88,19 +105,33 @@ async function generateWithGemini(title: string, category: string): Promise<Prod
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
 
-  const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: buildPrompt(title, category) }] }],
-      generationConfig: { responseMimeType: "application/json", responseSchema: PRODUCT_CONTENT_SCHEMA, temperature: 0.2, maxOutputTokens: 1800 },
-    }),
-  });
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: buildPrompt(title, category) }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: PRODUCT_CONTENT_SCHEMA,
+          temperature: 0.2,
+          maxOutputTokens: 1800,
+        },
+      }),
+    },
+  );
 
   if (!response.ok) throw new Error(`Gemini request failed with status ${response.status}.`);
-  const payload = (await response.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+  const payload = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
   const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Gemini returned no content.");
+
   const parsed = JSON.parse(text) as unknown;
   if (!isProductContent(parsed)) throw new Error("Gemini returned invalid product content.");
 
@@ -112,29 +143,48 @@ async function generateWithGemini(title: string, category: string): Promise<Prod
     benefits: parsed.benefits.map(cleanText).filter(Boolean).slice(0, 5),
     whoShouldBuy: cleanText(parsed.whoShouldBuy),
     buyingTips: parsed.buyingTips.map(cleanText).filter(Boolean).slice(0, 4),
-    faqs: parsed.faqs.map((faq) => ({ q: cleanText(faq.q), a: cleanText(faq.a) })).filter((faq) => faq.q && faq.a).slice(0, 4),
+    faqs: parsed.faqs
+      .map((faq) => ({ q: cleanText(faq.q), a: cleanText(faq.a) }))
+      .filter((faq) => faq.q && faq.a)
+      .slice(0, 4),
   };
 }
 
-export async function getOrGenerateProductContent(dealId: string, title: string, category: string): Promise<ProductContent | null> {
+export async function getOrGenerateProductContent(
+  dealId: string,
+  title: string,
+  category: string,
+): Promise<ProductContent | null> {
   // Only database-backed products are generated and persisted. Sheet-only deals
   // continue using the existing deterministic fallback so public visits cannot
   // consume Gemini credits repeatedly.
   if (!dealId.startsWith("db-")) return null;
 
   const id = dealId.slice(3);
-  const { data: deal, error } = await supabaseAdmin.from("deals").select("title,category,metadata").eq("id", id).single();
+  const { data: deal, error } = await supabaseAdmin
+    .from("deals")
+    .select("title,category,metadata")
+    .eq("id", id)
+    .single();
   if (error || !deal) return null;
 
-  const metadata = deal.metadata && typeof deal.metadata === "object" && !Array.isArray(deal.metadata)
-    ? (deal.metadata as Record<string, unknown>)
-    : {};
+  const metadata =
+    deal.metadata && typeof deal.metadata === "object" && !Array.isArray(deal.metadata)
+      ? (deal.metadata as Record<string, unknown>)
+      : {};
   const existing = metadata.ai_product_content;
   if (isProductContent(existing)) return existing;
 
   const content = await generateWithGemini(deal.title, deal.category || category);
-  const nextMetadata = { ...metadata, ai_product_content: content, ai_product_content_generated_at: new Date().toISOString() };
-  const { error: updateError } = await supabaseAdmin.from("deals").update({ metadata: nextMetadata }).eq("id", id);
+  const nextMetadata = {
+    ...metadata,
+    ai_product_content: content,
+    ai_product_content_generated_at: new Date().toISOString(),
+  };
+  const { error: updateError } = await supabaseAdmin
+    .from("deals")
+    .update({ metadata: nextMetadata })
+    .eq("id", id);
   if (updateError) throw new Error("Generated product content could not be saved.");
   return content;
 }
