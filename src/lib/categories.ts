@@ -23,6 +23,7 @@ export const CANONICAL_CATEGORIES = [
   "Toys & Baby",
   "Sports & Fitness",
   "Books",
+  "Festivals",
   "Other",
 ] as const;
 
@@ -47,6 +48,7 @@ export const CATEGORY_DISPLAY_ORDER: readonly CanonicalCategory[] = [
   "Toys & Baby",
   "Sports & Fitness",
   "Books",
+  "Festivals",
   "Other",
 ];
 
@@ -171,7 +173,7 @@ export const CATEGORY_ALIASES: Record<string, CanonicalCategory> = {
   "air purifier": "Home Appliances",
   "water purifier": "Home Appliances",
   "vacuum cleaner": "Home Appliances",
-  "geyser": "Home Appliances",
+  geyser: "Home Appliances",
   "water heater": "Home Appliances",
   fan: "Home Appliances",
   fans: "Home Appliances",
@@ -229,7 +231,7 @@ export const CATEGORY_ALIASES: Record<string, CanonicalCategory> = {
   sunglasses: "Fashion",
   jewellery: "Fashion",
   jewelry: "Fashion",
-  "accessories": "Fashion",
+  accessories: "Fashion",
 
   // Beauty
   beauty: "Beauty",
@@ -306,6 +308,23 @@ export const CATEGORY_ALIASES: Record<string, CanonicalCategory> = {
   ebook: "Books",
   ebooks: "Books",
   kindle: "Books",
+
+  // Festivals
+  festival: "Festivals",
+  festivals: "Festivals",
+  festive: "Festivals",
+  rakhi: "Festivals",
+  raksha: "Festivals",
+  "raksha bandhan": "Festivals",
+  diwali: "Festivals",
+  holi: "Festivals",
+  navratri: "Festivals",
+  dussehra: "Festivals",
+  christmas: "Festivals",
+  easter: "Festivals",
+  pongal: "Festivals",
+  sankranti: "Festivals",
+  ugadi: "Festivals",
 
   // Explicit fallback synonyms
   other: "Other",
