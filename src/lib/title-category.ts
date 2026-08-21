@@ -42,10 +42,19 @@ export function classifyProductCategory(
       ],
     },
     {
+      category: "Festivals",
+      patterns: [
+        /\brakhi\b/, /\braksha\b/, /\braksha\s+bandhan\b/,
+        /\bdiwali\b/, /\bholi\b/, /\bnavratri\b/, /\bdussehra\b/,
+        /\bchristmas\b/, /\beaster\b/, /\bpongal\b/, /\bsankranti\b/,
+        /\bugadi\b/, /\bfestival\b/, /\bfestive\b/,
+      ],
+    },
+    {
       category: "Fashion",
       patterns: [
-        /\brakhi\b/, /\bsaree\b/, /\bsari\b/, /\bkurta\b/, /\bkurti\b/,
-        /\bdress\b/, /\bshirt\b/, /\bt-?shirt\b/, /\bjeans\b/, /\btrousers\b/,
+        /\bsaree\b/, /\bsari\b/, /\bkurta\b/, /\bkurti\b/, /\bdress\b,
+        /\bshirt\b/, /\bt-?shirt\b/, /\bjeans\b/, /\btrousers\b/,
         /\bshoes?\b/, /\bsneakers?\b/, /\bsandals?\b/, /\bhandbag\b/,
         /\bbackpack\b/, /\bwallet\b/, /\bbelt\b/, /\bsunglasses\b/,
       ],
@@ -63,7 +72,7 @@ export function classifyProductCategory(
       category: "Electronics",
       patterns: [
         /\bsmartphone\b/, /\bmobile\s+phone\b/, /\btablet\b/, /\btelevision\b/, /\bsmart\s+tv\b/,
-        /\bheadphones?\b/, /\bearbuds?\b/, /\bearphones?\b/, /\bspeaker\b/, /\bsoundbar\b/,
+        /\bheadphones?\b/, /\bearbuds?\b/, /\bearphones?\b/, /\bspeaker\b/, /\bsoundbar\b,
         /\bpower\s+bank\b/, /\bcharger\b/, /\bcamera\b/, /\bgaming\s+console\b/,
       ],
     },
