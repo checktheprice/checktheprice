@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Deal } from "@/lib/deals";
+import { classifyProductCategory } from "@/lib/title-category";
 
 export async function fetchDbDeals(): Promise<Deal[]> {
   const { data, error } = await supabase
@@ -22,7 +23,10 @@ export async function fetchDbDeals(): Promise<Deal[]> {
     return {
       id: `db-${r.id}`,
       title: r.title,
-      category: r.category || "General",
+      // Display/filter category is derived from the title only when the title
+      // clearly identifies a product type. Otherwise preserve the stored
+      // category. Nothing is written back to Supabase here.
+      category: classifyProductCategory(r.title, r.category || "General"),
       image: r.image || "",
       onlinePrice: Number(r.price) || 0,
       mrp: Number(r.mrp) || 0,
