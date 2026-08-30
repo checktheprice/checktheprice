@@ -28,6 +28,9 @@ import { Route as ApiAdminAmazonRefreshRouteImport } from './routes/api/admin/am
 import { Route as ApiAdminAmazonSearchRouteImport } from './routes/api/admin/amazon-search'
 import { Route as ApiAdminAmazonVariationsRouteImport } from './routes/api/admin/amazon-variations'
 import { Route as ApiAdminFetchDetailsRouteImport } from './routes/api/admin/fetch-details'
+import { Route as ApiAdminAiReelDownloadRouteImport } from './routes/api/admin/ai-reel/download'
+import { Route as ApiAdminAiReelStartRouteImport } from './routes/api/admin/ai-reel/start'
+import { Route as ApiAdminAiReelStatusRouteImport } from './routes/api/admin/ai-reel/status'
 import { Route as ApiPublicAmazonDiagnosticsRouteImport } from './routes/api/public/amazon-diagnostics'
 import { Route as ApiPublicCronRefreshDealsRouteImport } from './routes/api/public/cron/refresh-deals'
 
@@ -127,6 +130,21 @@ const ApiAdminFetchDetailsRoute = ApiAdminFetchDetailsRouteImport.update({
   path: '/api/admin/fetch-details',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminAiReelDownloadRoute = ApiAdminAiReelDownloadRouteImport.update({
+  id: '/api/admin/ai-reel/download',
+  path: '/api/admin/ai-reel/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAiReelStartRoute = ApiAdminAiReelStartRouteImport.update({
+  id: '/api/admin/ai-reel/start',
+  path: '/api/admin/ai-reel/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAiReelStatusRoute = ApiAdminAiReelStatusRouteImport.update({
+  id: '/api/admin/ai-reel/status',
+  path: '/api/admin/ai-reel/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAmazonDiagnosticsRoute =
   ApiPublicAmazonDiagnosticsRouteImport.update({
     id: '/api/public/amazon-diagnostics',
@@ -160,6 +178,9 @@ export interface FileRoutesByFullPath {
   '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
   '/api/admin/amazon-variations': typeof ApiAdminAmazonVariationsRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
+  '/api/admin/ai-reel/download': typeof ApiAdminAiReelDownloadRoute
+  '/api/admin/ai-reel/start': typeof ApiAdminAiReelStartRoute
+  '/api/admin/ai-reel/status': typeof ApiAdminAiReelStatusRoute
   '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
 }
@@ -183,6 +204,9 @@ export interface FileRoutesByTo {
   '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
   '/api/admin/amazon-variations': typeof ApiAdminAmazonVariationsRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
+  '/api/admin/ai-reel/download': typeof ApiAdminAiReelDownloadRoute
+  '/api/admin/ai-reel/start': typeof ApiAdminAiReelStartRoute
+  '/api/admin/ai-reel/status': typeof ApiAdminAiReelStatusRoute
   '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
 }
@@ -207,6 +231,9 @@ export interface FileRoutesById {
   '/api/admin/amazon-search': typeof ApiAdminAmazonSearchRoute
   '/api/admin/amazon-variations': typeof ApiAdminAmazonVariationsRoute
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
+  '/api/admin/ai-reel/download': typeof ApiAdminAiReelDownloadRoute
+  '/api/admin/ai-reel/start': typeof ApiAdminAiReelStartRoute
+  '/api/admin/ai-reel/status': typeof ApiAdminAiReelStatusRoute
   '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
 }
@@ -232,6 +259,9 @@ export interface FileRouteTypes {
     | '/api/admin/amazon-search'
     | '/api/admin/amazon-variations'
     | '/api/admin/fetch-details'
+    | '/api/admin/ai-reel/download'
+    | '/api/admin/ai-reel/start'
+    | '/api/admin/ai-reel/status'
     | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
   fileRoutesByTo: FileRoutesByTo
@@ -255,6 +285,9 @@ export interface FileRouteTypes {
     | '/api/admin/amazon-search'
     | '/api/admin/amazon-variations'
     | '/api/admin/fetch-details'
+    | '/api/admin/ai-reel/download'
+    | '/api/admin/ai-reel/start'
+    | '/api/admin/ai-reel/status'
     | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
   id:
@@ -278,6 +311,9 @@ export interface FileRouteTypes {
     | '/api/admin/amazon-search'
     | '/api/admin/amazon-variations'
     | '/api/admin/fetch-details'
+    | '/api/admin/ai-reel/download'
+    | '/api/admin/ai-reel/start'
+    | '/api/admin/ai-reel/status'
     | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
   fileRoutesById: FileRoutesById
@@ -302,6 +338,9 @@ export interface RootRouteChildren {
   ApiAdminAmazonSearchRoute: typeof ApiAdminAmazonSearchRoute
   ApiAdminAmazonVariationsRoute: typeof ApiAdminAmazonVariationsRoute
   ApiAdminFetchDetailsRoute: typeof ApiAdminFetchDetailsRoute
+  ApiAdminAiReelDownloadRoute: typeof ApiAdminAiReelDownloadRoute
+  ApiAdminAiReelStartRoute: typeof ApiAdminAiReelStartRoute
+  ApiAdminAiReelStatusRoute: typeof ApiAdminAiReelStatusRoute
   ApiPublicAmazonDiagnosticsRoute: typeof ApiPublicAmazonDiagnosticsRoute
   ApiPublicCronRefreshDealsRoute: typeof ApiPublicCronRefreshDealsRoute
 }
@@ -441,6 +480,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminFetchDetailsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/ai-reel/download': {
+      id: '/api/admin/ai-reel/download'
+      path: '/api/admin/ai-reel/download'
+      fullPath: '/api/admin/ai-reel/download'
+      preLoaderRoute: typeof ApiAdminAiReelDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/ai-reel/start': {
+      id: '/api/admin/ai-reel/start'
+      path: '/api/admin/ai-reel/start'
+      fullPath: '/api/admin/ai-reel/start'
+      preLoaderRoute: typeof ApiAdminAiReelStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/ai-reel/status': {
+      id: '/api/admin/ai-reel/status'
+      path: '/api/admin/ai-reel/status'
+      fullPath: '/api/admin/ai-reel/status'
+      preLoaderRoute: typeof ApiAdminAiReelStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/amazon-diagnostics': {
       id: '/api/public/amazon-diagnostics'
       path: '/api/public/amazon-diagnostics'
@@ -478,6 +538,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminAmazonSearchRoute: ApiAdminAmazonSearchRoute,
   ApiAdminAmazonVariationsRoute: ApiAdminAmazonVariationsRoute,
   ApiAdminFetchDetailsRoute: ApiAdminFetchDetailsRoute,
+  ApiAdminAiReelDownloadRoute: ApiAdminAiReelDownloadRoute,
+  ApiAdminAiReelStartRoute: ApiAdminAiReelStartRoute,
+  ApiAdminAiReelStatusRoute: ApiAdminAiReelStatusRoute,
   ApiPublicAmazonDiagnosticsRoute: ApiPublicAmazonDiagnosticsRoute,
   ApiPublicCronRefreshDealsRoute: ApiPublicCronRefreshDealsRoute,
 }
