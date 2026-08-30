@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildAmazonAffiliateLink } from "@/lib/affiliate";
 import { calcDiscount } from "@/lib/deals";
 import { normalizeCategory } from "@/lib/categories";
+import { AIReelCreator } from "@/components/admin/AIReelCreator";
 import { ManageDeals } from "@/components/admin/ManageDeals";
 import {
   type Merchant,
@@ -596,6 +597,8 @@ function AdminPage() {
           otherwise the original Flipkart URL. Independent of Google Sheets.
         </p>
       </div>
+
+      <AIReelCreator />
 
       <ManageDeals />
     </main>
