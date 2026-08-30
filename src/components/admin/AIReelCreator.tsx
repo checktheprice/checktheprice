@@ -53,12 +53,25 @@ export function AIReelCreator() {
     return token;
   }
 
+  async function fetchVideoBlob(operation: string) {
+    const token = await getAccessToken();
+    const response = await fetch(`/api/admin/ai-reel/download?operation=${encodeURIComponent(operation)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.error || `Video download failed (HTTP ${response.status}).`);
+    }
+    return response.blob();
+  }
+
   async function generate() {
     if (!selected?.image) {
       setError("This product does not have an image.");
       return;
     }
     setError(null);
+    if (videoUrl) URL.revokeObjectURL(videoUrl);
     setVideoUrl(null);
     setGenerating(true);
     setStatus("Starting AI reel generation…");
@@ -86,7 +99,9 @@ export function AIReelCreator() {
         if (!response.ok) throw new Error(body?.error || `Could not check generation (HTTP ${response.status}).`);
         if (body?.failed) throw new Error(body.error || "Video generation failed.");
         if (body?.done && body?.downloadUrl) {
-          setVideoUrl(body.downloadUrl);
+          setStatus("Downloading the generated reel for preview…");
+          const blob = await fetchVideoBlob(operation);
+          setVideoUrl(URL.createObjectURL(blob));
           setStatus("Your reel is ready. Preview it, then save it to your phone.");
           break;
         }
@@ -102,12 +117,8 @@ export function AIReelCreator() {
   async function download() {
     if (!videoUrl) return;
     try {
-      const token = await getAccessToken();
-      const response = await fetch(videoUrl, { headers: { Authorization: `Bearer ${token}` } });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.error || `Download failed (HTTP ${response.status}).`);
-      }
+      const response = await fetch(videoUrl);
+      if (!response.ok) throw new Error(`Download failed (HTTP ${response.status}).`);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -118,9 +129,13 @@ export function AIReelCreator() {
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setError((e as Error).message || "Could not download the video.");
+      setError((e as Error).message || "Could not save the video.");
     }
   }
+
+  useEffect(() => () => {
+    if (videoUrl) URL.revokeObjectURL(videoUrl);
+  }, [videoUrl]);
 
   return (
     <section className="mt-6 rounded-lg border border-border bg-card p-4">
@@ -138,7 +153,12 @@ export function AIReelCreator() {
             className={inputCls}
             value={selectedId}
             disabled={loadingProducts || generating}
-            onChange={(event) => { setSelectedId(event.target.value); setVideoUrl(null); setError(null); }}
+            onChange={(event) => {
+              setSelectedId(event.target.value);
+              if (videoUrl) URL.revokeObjectURL(videoUrl);
+              setVideoUrl(null);
+              setError(null);
+            }}
           >
             <option value="">{loadingProducts ? "Loading products…" : "Select a product"}</option>
             {products.map((product) => (
