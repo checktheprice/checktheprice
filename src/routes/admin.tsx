@@ -384,6 +384,16 @@ function AdminPage() {
         </button>
       </div>
 
+      <button
+        type="button"
+        onClick={() => {
+          window.location.href = "/admin-ai-reel";
+        }}
+        className="mt-4 w-full rounded-md bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground"
+      >
+        🎬 AI Reel Creator
+      </button>
+
       <div className="mt-4 rounded-lg border border-border bg-card p-3">
         <button
           type="button"
