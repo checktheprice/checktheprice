@@ -20,6 +20,12 @@ const COMPATIBILITY_TERMS = [
   "refurbished", "renewed", "used", "open box", "for use with",
 ];
 
+/** Commercial listing terms that should not be treated as product purchase offers. */
+const NON_PURCHASE_TERMS = [
+  "rent", "rental", "rented", "hire", "hiring", "lease", "leasing",
+  "subscription", "monthly rental", "per day", "per week", "per month", "deposit",
+];
+
 const COLORS = [
   "black", "white", "blue", "red", "green", "silver", "gold", "grey", "gray", "graphite",
   "midnight", "starlight", "purple", "violet", "pink", "yellow", "orange", "brown", "beige",
@@ -150,6 +156,7 @@ export function isRelevantCategoryProduct(
 
   if (!hasAny(reference.norm, ACCESSORY_TERMS) && hasAny(cand.norm, ACCESSORY_TERMS)) return false;
   if (!hasAny(reference.norm, COMPATIBILITY_TERMS) && hasAny(cand.norm, COMPATIBILITY_TERMS)) return false;
+  if (hasAny(cand.norm, NON_PURCHASE_TERMS) && !hasAny(reference.norm, NON_PURCHASE_TERMS)) return false;
 
   const queryWords = reference.words;
   const candidateWords = new Set(meaningfulTokens(cand.norm));
