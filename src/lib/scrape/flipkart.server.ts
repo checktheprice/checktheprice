@@ -106,17 +106,29 @@ export function extractFlipkartProduct(html: string): Extracted {
   }
 
   const image =
-    ldImage ?? cleanText($('meta[property="og:image"]').first().attr("content"));
+    ldImage ?? cleanText($("meta[property=\"og:image\"]").first().attr("content"));
 
   return { title, category, price, mrp, image };
 }
 
-/** Flipkart product pages live at /<slug>/p/<itemId>, optionally with ?pid=. */
+/**
+ * Flipkart product pages can use either the traditional /<slug>/p/itm...
+ * format or the newer /x/p/x?pid=... short format produced by the app.
+ */
 export function flipkartStandardLink(target: URL): string | null {
-  if (!/\/p\/itm[a-z0-9]+/i.test(target.pathname)) return null;
-  const pid = target.searchParams.get("pid");
-  return (
-    `https://www.flipkart.com${target.pathname}` +
-    (pid ? `?pid=${encodeURIComponent(pid)}` : "")
-  );
+  if (/\/p\/itm[a-z0-9]+/i.test(target.pathname)) {
+    const pid = target.searchParams.get("pid");
+    return (
+      `https://www.flipkart.com${target.pathname}` +
+      (pid ? `?pid=${encodeURIComponent(pid)}` : "")
+    );
+  }
+
+  if (/^\/x\/p\/x\/?$/i.test(target.pathname)) {
+    const pid = target.searchParams.get("pid")?.trim();
+    if (!pid) return null;
+    return `https://www.flipkart.com/x/p/x?pid=${encodeURIComponent(pid)}`;
+  }
+
+  return null;
 }
