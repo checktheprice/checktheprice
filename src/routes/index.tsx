@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { Tag, TrendingDown, Flame, X } from "lucide-react";
+import { Search, Wallet, TrendingDown, Flame, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DealCard } from "@/components/DealCard";
@@ -22,6 +22,7 @@ import {
   ComparePricesSection,
   COMPARE_SUBTITLE,
 } from "@/components/ComparePricesSection";
+import { BudgetBuddy } from "@/components/BudgetBuddy";
 import { normalizeCategory, sortCategoriesForDisplay } from "@/lib/categories";
 
 const dealsQueryOptions = queryOptions({
@@ -127,6 +128,7 @@ function Index() {
   const [category, setCategory] = useState<string>("All");
   const [filter, setFilter] = useState<"all" | "hot">("all");
   const [alertDeal, setAlertDeal] = useState<Deal | null>(null);
+  const [heroMode, setHeroMode] = useState<"compare" | "budget">("compare");
 
   // Categories are normalized for display so scraped variants ("Smartphones",
   // "Mobile Phones", …) collapse into one canonical chip.
@@ -173,25 +175,75 @@ function Index() {
           style={{ background: "var(--gradient-hero)" }}
         />
         <div className="mx-auto max-w-4xl px-4 pb-8 pt-8 text-center sm:pb-10 sm:pt-12">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border bg-card/80 px-3 py-1 text-xs font-semibold text-muted-foreground">
-            <Tag className="h-3.5 w-3.5" />
-            Price comparison + daily loot
-          </div>
-          <h1
-            className="text-3xl font-extrabold tracking-tight sm:text-5xl"
-            style={{ color: "#ff9900" }}
+          <div
+            className="mx-auto mb-4 inline-flex max-w-full rounded-full border bg-card/80 p-1 shadow-sm"
+            role="tablist"
+            aria-label="Shopping assistant mode"
           >
-            Check the Price Before You Buy
-          </h1>
-          <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-            {COMPARE_SUBTITLE}
-          </p>
-
-          {/* Search box: product names or Amazon/Flipkart URLs.
-              Comparison results render right below, only after a search. */}
-          <div className="mt-6">
-            <ComparePricesSection variant="bare" />
+            <Button
+              type="button"
+              role="tab"
+              aria-selected={heroMode === "compare"}
+              variant="ghost"
+              onClick={() => setHeroMode("compare")}
+              className={`h-8 rounded-full px-3 text-xs font-bold sm:px-4 ${
+                heroMode === "compare"
+                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Search className="h-3.5 w-3.5" /> Compare Prices
+            </Button>
+            <Button
+              type="button"
+              role="tab"
+              aria-selected={heroMode === "budget"}
+              variant="ghost"
+              onClick={() => setHeroMode("budget")}
+              className={`h-8 rounded-full px-3 text-xs font-bold sm:px-4 ${
+                heroMode === "budget"
+                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Wallet className="h-3.5 w-3.5" /> Budget Buddy
+            </Button>
           </div>
+
+          {heroMode === "compare" ? (
+            <>
+              <h1
+                className="text-3xl font-extrabold tracking-tight sm:text-5xl"
+                style={{ color: "#ff9900" }}
+              >
+                Check the Price Before You Buy
+              </h1>
+              <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
+                {COMPARE_SUBTITLE}
+              </p>
+
+              {/* Search box: product names or Amazon/Flipkart URLs.
+                  Comparison results render right below, only after a search. */}
+              <div className="mt-6">
+                <ComparePricesSection variant="bare" />
+              </div>
+            </>
+          ) : (
+            <>
+              <h1
+                className="text-3xl font-extrabold tracking-tight sm:text-5xl"
+                style={{ color: "#ff9900" }}
+              >
+                Meet Budget Buddy
+              </h1>
+              <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
+                Tell us what you want and your budget. We'll find highly rated products at great prices.
+              </p>
+              <div className="mt-5">
+                <BudgetBuddy />
+              </div>
+            </>
+          )}
         </div>
       </header>
 
