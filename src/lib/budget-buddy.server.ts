@@ -62,7 +62,10 @@ function dedupeOffers(offers: BudgetBuddyOffer[]): BudgetBuddyOffer[] {
 
 async function searchWithGemini(query: string, budget: number): Promise<BudgetBuddyOffer[]> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return [];
+  if (!apiKey) {
+    console.error("[budget-buddy] GEMINI_API_KEY is not configured in this deployment");
+    return [];
+  }
 
   const prompt = `Find real shopping products in India for: "${query}".
 Hard budget: INR ${Math.round(budget)}. Every product MUST have a listed price at or below the budget.
