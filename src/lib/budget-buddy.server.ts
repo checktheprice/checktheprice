@@ -122,7 +122,7 @@ export async function findBudgetBuddyProducts(rawQuery: string, rawBudget: numbe
   if (query.length < 2) return { query, budget, offers: [], source: "gemini", error: "Tell us what product you are looking for." };
   if (!Number.isFinite(budget) || budget <= 0 || budget > 10000000) return { query, budget, offers: [], source: "gemini", error: "Enter a valid budget." };
 
-  const offers = await searchWithGemini(query, budget);
+  let offers = await searchWithGemini(query, budget);
   const source: BudgetBuddyResult["source"] = "gemini";
   offers = dedupeOffers(offers).filter((o) => o.price != null && o.price <= budget)
     .sort((a,b) => rank(b,budget) - rank(a,budget)).slice(0,5);
