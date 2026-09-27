@@ -30,6 +30,7 @@ import { Route as ApiAdminAmazonVariationsRouteImport } from './routes/api/admin
 import { Route as ApiAdminFetchDetailsRouteImport } from './routes/api/admin/fetch-details'
 import { Route as ApiPublicAmazonDiagnosticsRouteImport } from './routes/api/public/amazon-diagnostics'
 import { Route as ApiPublicCronRefreshDealsRouteImport } from './routes/api/public/cron/refresh-deals'
+import { Route as ApiPublicCronRefreshSheetPricesRouteImport } from './routes/api/public/cron/refresh-sheet-prices'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -139,6 +140,12 @@ const ApiPublicCronRefreshDealsRoute =
     path: '/api/public/cron/refresh-deals',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronRefreshSheetPricesRoute =
+  ApiPublicCronRefreshSheetPricesRouteImport.update({
+    id: '/api/public/cron/refresh-sheet-prices',
+    path: '/api/public/cron/refresh-sheet-prices',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
   '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
+  '/api/public/cron/refresh-sheet-prices': typeof ApiPublicCronRefreshSheetPricesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -185,6 +193,7 @@ export interface FileRoutesByTo {
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
   '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
+  '/api/public/cron/refresh-sheet-prices': typeof ApiPublicCronRefreshSheetPricesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -209,6 +218,7 @@ export interface FileRoutesById {
   '/api/admin/fetch-details': typeof ApiAdminFetchDetailsRoute
   '/api/public/amazon-diagnostics': typeof ApiPublicAmazonDiagnosticsRoute
   '/api/public/cron/refresh-deals': typeof ApiPublicCronRefreshDealsRoute
+  '/api/public/cron/refresh-sheet-prices': typeof ApiPublicCronRefreshSheetPricesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/api/admin/fetch-details'
     | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
+    | '/api/public/cron/refresh-sheet-prices'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/api/admin/fetch-details'
     | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
+    | '/api/public/cron/refresh-sheet-prices'
   id:
     | '__root__'
     | '/'
@@ -280,6 +292,7 @@ export interface FileRouteTypes {
     | '/api/admin/fetch-details'
     | '/api/public/amazon-diagnostics'
     | '/api/public/cron/refresh-deals'
+    | '/api/public/cron/refresh-sheet-prices'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -304,6 +317,7 @@ export interface RootRouteChildren {
   ApiAdminFetchDetailsRoute: typeof ApiAdminFetchDetailsRoute
   ApiPublicAmazonDiagnosticsRoute: typeof ApiPublicAmazonDiagnosticsRoute
   ApiPublicCronRefreshDealsRoute: typeof ApiPublicCronRefreshDealsRoute
+  ApiPublicCronRefreshSheetPricesRoute: typeof ApiPublicCronRefreshSheetPricesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -455,6 +469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronRefreshDealsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/refresh-sheet-prices': {
+      id: '/api/public/cron/refresh-sheet-prices'
+      path: '/api/public/cron/refresh-sheet-prices'
+      fullPath: '/api/public/cron/refresh-sheet-prices'
+      preLoaderRoute: typeof ApiPublicCronRefreshSheetPricesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -480,6 +501,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminFetchDetailsRoute: ApiAdminFetchDetailsRoute,
   ApiPublicAmazonDiagnosticsRoute: ApiPublicAmazonDiagnosticsRoute,
   ApiPublicCronRefreshDealsRoute: ApiPublicCronRefreshDealsRoute,
+  ApiPublicCronRefreshSheetPricesRoute: ApiPublicCronRefreshSheetPricesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
