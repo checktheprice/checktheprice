@@ -129,7 +129,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <Analytics />
         {/* Cuelinks — must be rendered server-side inside <body> */}
         <script
-          dangerouslySetInnerHTML={{ __html: `var cId = "303416";` }}
+          dangerouslySetInnerHTML={{ __html: `window.cId = "303416";` }}
         />
         <script
           async
