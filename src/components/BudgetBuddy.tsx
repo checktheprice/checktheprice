@@ -128,7 +128,7 @@ export function BudgetBuddy() {
             <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
               {budgetResult?.error ?? "No suitable products found."}
             </div>
-          )
+          )}
         </div>
       )}
 
