@@ -87,7 +87,6 @@ Use null when a field is unavailable.`;
         tools: [{ google_search: {} }],
         generationConfig: {
           temperature: 0.1,
-          responseMimeType: "application/json",
         },
       }),
       signal: AbortSignal.timeout(20000),
