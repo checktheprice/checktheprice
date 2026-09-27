@@ -1,0 +1,1 @@
+- [GitHub publishing](github-publishing.md) — use the authorized GitHub connector when shell HTTPS credentials reject a branch push.
