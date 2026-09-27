@@ -66,9 +66,10 @@ async function searchWithGemini(query: string, budget: number): Promise<BudgetBu
 
   const prompt = `Find real shopping products in India for: "${query}".
 Hard budget: INR ${Math.round(budget)}. Every product MUST have a listed price at or below the budget.
-Return 5-8 genuinely different MAIN PRODUCTS, preferably Amazon.in or Flipkart.com.
+Return 5-8 genuinely different MAIN PRODUCTS.
+IMPORTANT MERCHANT COVERAGE: actively search BOTH Amazon.in and Flipkart.com. When both have relevant products within budget, include products from BOTH merchants (aim for at least 2 Amazon.in and 2 Flipkart.com results). Do not return only one merchant just because it appeared first.
 Exclude cases, covers, chargers, cables, protectors, replacement parts, bags, stands and other accessories.
-Never invent product data. Use direct merchant product URLs, not Google URLs.
+Never invent product data. Use direct merchant product URLs, not Google URLs. For Amazon results, the URL must be a real amazon.in product URL; for Flipkart results, the URL must be a real flipkart.com product URL.
 Prefer products with visible ratings/review counts. Give a short evidence-based reason.
 Return JSON only: {"products":[{"title":"...","url":"https://...","price":9999,"rating":4.3,"reviews":1200,"image":"https://...","reason":"...","badge":"Best Overall"}]}.
 Use null when a field is unavailable.`;
