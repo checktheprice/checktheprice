@@ -1,10 +1,4 @@
 import { buildCompareBuyLink, resolveMerchant } from "@/lib/compare/merchants";
-import {
-  collectStoreEntries,
-  serpApiGoogleShopping,
-  serpApiImmersiveProduct,
-  type SerpShoppingResult,
-} from "@/lib/compare/serpapi.server";
 import type { CompareOffer } from "@/lib/compare/types";
 import type { BudgetBuddyOffer, BudgetBuddyResult } from "./budget-buddy.types";
 
@@ -114,48 +108,6 @@ Use null when a field is unavailable.`;
   }
 }
 
-function directMerchantUrl(r: SerpShoppingResult): string | null {
-  for (const candidate of [r.direct_link, r.link, r.product_link]) {
-    if (!candidate) continue;
-    try { if (!/google\./i.test(new URL(candidate).hostname)) return candidate; } catch {}
-  }
-  return null;
-}
-
-async function resolveSerpMerchantUrl(r: SerpShoppingResult): Promise<string | null> {
-  const direct = directMerchantUrl(r);
-  if (direct) return direct;
-  const api = r.serpapi_immersive_product_api;
-  if (!api) return null;
-  try {
-    const token = new URL(api).searchParams.get("page_token");
-    if (!token) return null;
-    const body = await serpApiImmersiveProduct(token);
-    if (body.error) return null;
-    const stores = collectStoreEntries(body);
-    const wanted = (r.source ?? "").toLowerCase();
-    const match = stores.find((s) => {
-      const url = s.direct_link || s.link || s.base_link;
-      const name = (s.name || s.merchant || "").toLowerCase();
-      return !!url && !/google\./i.test(url) && !!wanted && !!name && (name.includes(wanted) || wanted.includes(name));
-    });
-    return match?.direct_link || match?.link || match?.base_link || null;
-  } catch { return null; }
-}
-
-async function searchWithSerpApi(query: string, budget: number): Promise<BudgetBuddyOffer[]> {
-  const response = await serpApiGoogleShopping(`${query} under ₹${Math.round(budget)}`, { num: 40 });
-  if (response.error) return [];
-  const raw = [...(response.shopping_results ?? []), ...(response.inline_shopping_results ?? []), ...(response.immersive_products ?? [])]
-    .filter((item) => (item.title ?? "").trim().length > 0).slice(0, 30);
-  const resolved = await Promise.all(raw.map(async (item) => ({ item, url: await resolveSerpMerchantUrl(item) })));
-  return resolved.map(({item,url}) => url ? offerFromRaw(
-    item.title?.trim() ?? "", url, parsePrice(item.extracted_price ?? item.price) ?? 0,
-    item.thumbnail ?? null, typeof item.rating === "number" ? item.rating : null,
-    typeof item.reviews === "number" ? item.reviews : null, null, null
-  ) : null).filter((o): o is BudgetBuddyOffer => !!o).filter((o) => (o.price ?? Infinity) <= budget);
-}
-
 function rank(offer: BudgetBuddyOffer, budget: number): number {
   const rating = offer.rating == null ? 0 : offer.rating / 5;
   const reviews = offer.reviews == null ? 0 : Math.min(Math.log10(offer.reviews + 1) / 6, 1);
@@ -166,15 +118,11 @@ function rank(offer: BudgetBuddyOffer, budget: number): number {
 export async function findBudgetBuddyProducts(rawQuery: string, rawBudget: number): Promise<BudgetBuddyResult> {
   const query = cleanQuery(rawQuery);
   const budget = Math.round(rawBudget);
-  if (query.length < 2) return { query, budget, offers: [], source: "serpapi", error: "Tell us what product you are looking for." };
-  if (!Number.isFinite(budget) || budget <= 0 || budget > 10000000) return { query, budget, offers: [], source: "serpapi", error: "Enter a valid budget." };
+  if (query.length < 2) return { query, budget, offers: [], source: "gemini", error: "Tell us what product you are looking for." };
+  if (!Number.isFinite(budget) || budget <= 0 || budget > 10000000) return { query, budget, offers: [], source: "gemini", error: "Enter a valid budget." };
 
-  let offers = await searchWithGemini(query, budget);
-  let source: BudgetBuddyResult["source"] = "gemini";
-  if (offers.length === 0) {
-    offers = await searchWithSerpApi(query, budget);
-    source = "serpapi";
-  }
+  const offers = await searchWithGemini(query, budget);
+  const source: BudgetBuddyResult["source"] = "gemini";
   offers = dedupeOffers(offers).filter((o) => o.price != null && o.price <= budget)
     .sort((a,b) => rank(b,budget) - rank(a,budget)).slice(0,5);
   return {
