@@ -5,62 +5,27 @@ import { Search, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PriceComparison } from "@/components/PriceComparison";
-import { comparePricesFn } from "@/lib/compare/compare.functions";
-import type { CompareResult } from "@/lib/compare/types";
+import { budgetBuddyFn } from "@/lib/budget-buddy.functions";
+import type { BudgetBuddyResult } from "@/lib/budget-buddy.types";
 
 function parseBudget(value: string): number | null {
   const amount = Number(value.replace(/[^0-9.]/g, ""));
   return Number.isFinite(amount) && amount > 0 ? amount : null;
 }
 
-function rankForBudget(
-  price: number,
-  budget: number,
-  rating: number | null,
-  reviews: number | null,
-): number {
-  const ratingScore = rating == null ? 0 : Math.min(rating / 5, 1) * 0.6;
-  const reviewScore = reviews == null ? 0 : Math.min(Math.log10(reviews + 1) / 6, 1) * 0.2;
-  const valueScore = Math.max(0, 1 - price / budget) * 0.2;
-  return ratingScore + reviewScore + valueScore;
-}
-
-function withinBudget(result: CompareResult, budget: number): CompareResult {
-  const offers = result.offers
-    .filter((offer) => offer.price != null && offer.price <= budget)
-    .sort((a, b) => {
-      const aScore = rankForBudget(a.price ?? budget, budget, a.rating, a.reviews);
-      const bScore = rankForBudget(b.price ?? budget, budget, b.rating, b.reviews);
-      return bScore - aScore;
-    });
-  const prices = offers.flatMap((offer) => (offer.price == null ? [] : [offer.price]));
-
-  return {
-    ...result,
-    offers,
-    lowestPrice: prices.length ? Math.min(...prices) : null,
-    highestPrice: prices.length ? Math.max(...prices) : null,
-    savings: null,
-    error: offers.length ? null : `No matching products found within ₹${Math.round(budget).toLocaleString("en-IN")}.`,
-  };
-}
-
 export function BudgetBuddy() {
   const [product, setProduct] = useState("");
   const [budget, setBudget] = useState("");
   const [submittedBudget, setSubmittedBudget] = useState<number | null>(null);
-  const compare = useServerFn(comparePricesFn);
+  const searchBudgetBuddy = useServerFn(budgetBuddyFn);
 
-  const mutation = useMutation<CompareResult, Error, { query: string; budget: number }>({
-    mutationFn: ({ query }) => compare({ data: { query } }),
+  const mutation = useMutation<BudgetBuddyResult, Error, { query: string; budget: number }>({
+    mutationFn: ({ query, budget }) => searchBudgetBuddy({ data: { query, budget } }),
     onSuccess: (_result, variables) => setSubmittedBudget(variables.budget),
   });
 
   const budgetValue = useMemo(() => parseBudget(budget), [budget]);
-  const budgetResult =
-    mutation.data && submittedBudget != null
-      ? withinBudget(mutation.data, submittedBudget)
-      : null;
+  const budgetResult = mutation.data;
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -119,7 +84,7 @@ export function BudgetBuddy() {
               Showing suitable matches priced at or below ₹{Math.round(submittedBudget).toLocaleString("en-IN")}.
             </p>
           )}
-          <PriceComparison result={budgetResult} loading={mutation.isPending} />
+          <PriceComparison result={budgetResult ? { query: budgetResult.query, resolvedFromUrl: false, selected: null, offers: budgetResult.offers, lowestPrice: budgetResult.offers.length ? Math.min(...budgetResult.offers.map((o) => o.price ?? Infinity)) : null, highestPrice: budgetResult.offers.length ? Math.max(...budgetResult.offers.map((o) => o.price ?? -Infinity)) : null, savings: null, error: budgetResult.error } : null} loading={mutation.isPending} />
         </div>
       )}
 
