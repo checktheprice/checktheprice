@@ -89,28 +89,6 @@ Use null when a field is unavailable.`;
         generationConfig: {
           temperature: 0.1,
           responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              products: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    title: { type: "STRING" }, url: { type: "STRING" },
-                    price: { type: ["NUMBER", "NULL"] },
-                    rating: { type: ["NUMBER", "NULL"] },
-                    reviews: { type: ["INTEGER", "NULL"] },
-                    image: { type: ["STRING", "NULL"] },
-                    reason: { type: ["STRING", "NULL"] },
-                    badge: { type: ["STRING", "NULL"] },
-                  },
-                  required: ["title","url","price","rating","reviews","image","reason","badge"],
-                },
-              },
-            },
-            required: ["products"],
-          },
         },
       }),
       signal: AbortSignal.timeout(20000),
