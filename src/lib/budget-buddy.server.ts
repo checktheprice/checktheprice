@@ -74,7 +74,8 @@ IMPORTANT MERCHANT COVERAGE: actively search BOTH Amazon.in and Flipkart.com. Wh
 Exclude cases, covers, chargers, cables, protectors, replacement parts, bags, stands and other accessories.
 Never invent product data. Use direct merchant product URLs, not Google URLs. For Amazon results, the URL must be a real amazon.in product URL; for Flipkart results, the URL must be a real flipkart.com product URL.
 Prefer products with visible ratings/review counts. Give a short evidence-based reason.
-Return JSON only: {"products":[{"title":"...","url":"https://...","price":9999,"rating":4.3,"reviews":1200,"image":"https://...","reason":"...","badge":"Best Overall"}]}.
+Return JSON only: {"products":[{"title":"...","merchant":"Amazon.in","url":"https://www.amazon.in/dp/ASIN","price":9999,"rating":4.3,"reviews":1200,"image":"https://...","reason":"...","badge":"Best Overall"}]}.
+For Amazon, always return the canonical product URL https://www.amazon.in/dp/ASIN when an ASIN is available. For Flipkart, return the direct product page URL from the search result. Never return a Google, vertexaisearch, tracking, or redirect URL.
 Use null when a field is unavailable.`;
 
   try {
@@ -91,11 +92,33 @@ Use null when a field is unavailable.`;
       }),
       signal: AbortSignal.timeout(20000),
     });
-    if (!response.ok) return [];
-    const body = await response.json() as { candidates?: Array<{content?: {parts?: Array<{text?: string}>}}> };
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("[budget-buddy] Gemini API error", response.status, errorBody.slice(0, 1000));
+      return [];
+    }
+    const body = await response.json() as {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+        groundingMetadata?: {
+          webSearchQueries?: string[];
+          groundingChunks?: Array<{ web?: { uri?: string; title?: string } }>;
+        };
+      }>;
+    };
     const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
-    if (!text) return [];
-    const parsed = JSON.parse(text) as { products?: Array<Record<string, unknown>> };
+    if (!text) {
+      console.error("[budget-buddy] Gemini returned no text");
+      return [];
+    }
+    const jsonText = text.replace(/^\`\`\`json\s*/i, "").replace(/\s*\`\`\`$/i, "").trim();
+    let parsed: { products?: Array<Record<string, unknown>> };
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (error) {
+      console.error("[budget-buddy] Gemini returned non-JSON output", { error, text: text.slice(0, 2000) });
+      return [];
+    }
     return (parsed.products ?? []).map((p) => offerFromRaw(
       typeof p.title === "string" ? p.title : "",
       typeof p.url === "string" ? p.url : "",
