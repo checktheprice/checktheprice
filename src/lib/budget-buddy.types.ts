@@ -9,6 +9,6 @@ export type BudgetBuddyResult = {
   query: string;
   budget: number;
   offers: BudgetBuddyOffer[];
-  source: "gemini" | "serpapi";
+  source: "gemini";
   error: string | null;
 };
