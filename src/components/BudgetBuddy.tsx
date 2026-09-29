@@ -4,64 +4,26 @@ import { useServerFn } from "@tanstack/react-start";
 import { Search, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PriceComparison } from "@/components/PriceComparison";
-import { comparePricesFn } from "@/lib/compare/compare.functions";
-import type { CompareResult } from "@/lib/compare/types";
+import { BudgetRecommendations } from "@/components/BudgetRecommendations";
+import { discoverBudgetProductsFn } from "@/lib/budget-buddy/budget.functions";
+import type { BudgetDiscoveryResult } from "@/lib/budget-buddy/types";
 
 function parseBudget(value: string): number | null {
   const amount = Number(value.replace(/[^0-9.]/g, ""));
   return Number.isFinite(amount) && amount > 0 ? amount : null;
 }
 
-function rankForBudget(
-  price: number,
-  budget: number,
-  rating: number | null,
-  reviews: number | null,
-): number {
-  const ratingScore = rating == null ? 0 : Math.min(rating / 5, 1) * 0.6;
-  const reviewScore = reviews == null ? 0 : Math.min(Math.log10(reviews + 1) / 6, 1) * 0.2;
-  const valueScore = Math.max(0, 1 - price / budget) * 0.2;
-  return ratingScore + reviewScore + valueScore;
-}
-
-function withinBudget(result: CompareResult, budget: number): CompareResult {
-  const offers = result.offers
-    .filter((offer) => offer.price != null && offer.price <= budget)
-    .sort((a, b) => {
-      const aScore = rankForBudget(a.price ?? budget, budget, a.rating, a.reviews);
-      const bScore = rankForBudget(b.price ?? budget, budget, b.rating, b.reviews);
-      return bScore - aScore;
-    });
-  const prices = offers.flatMap((offer) => (offer.price == null ? [] : [offer.price]));
-
-  return {
-    ...result,
-    offers,
-    lowestPrice: prices.length ? Math.min(...prices) : null,
-    highestPrice: prices.length ? Math.max(...prices) : null,
-    savings: null,
-    error: offers.length ? null : `No matching products found within ₹${Math.round(budget).toLocaleString("en-IN")}.`,
-  };
-}
-
 export function BudgetBuddy() {
   const [product, setProduct] = useState("");
   const [budget, setBudget] = useState("");
-  const [submittedBudget, setSubmittedBudget] = useState<number | null>(null);
-  const compare = useServerFn(comparePricesFn);
+  const discover = useServerFn(discoverBudgetProductsFn);
 
-  const mutation = useMutation<CompareResult, Error, { query: string; budget: number }>({
-    mutationFn: ({ query }) => compare({ data: { query } }),
-    onSuccess: (_result, variables) => setSubmittedBudget(variables.budget),
+  const mutation = useMutation<BudgetDiscoveryResult, Error, { query: string; budget: number }>({
+    mutationFn: ({ query, budget: amount }) =>
+      discover({ data: { query, budget: amount } }),
   });
 
   const budgetValue = useMemo(() => parseBudget(budget), [budget]);
-  const budgetResult =
-    mutation.data && submittedBudget != null
-      ? withinBudget(mutation.data, submittedBudget)
-      : null;
-
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const query = product.trim();
@@ -112,20 +74,15 @@ export function BudgetBuddy() {
         </Button>
       </form>
 
-      {(mutation.isPending || budgetResult) && (
+      {(mutation.isPending || mutation.data) && (
         <div className="mt-5">
-          {budgetResult && submittedBudget != null && (
-            <p className="mb-3 text-xs font-semibold text-muted-foreground">
-              Showing suitable matches priced at or below ₹{Math.round(submittedBudget).toLocaleString("en-IN")}.
-            </p>
-          )}
-          <PriceComparison result={budgetResult} loading={mutation.isPending} />
+          <BudgetRecommendations result={mutation.data ?? null} loading={mutation.isPending} />
         </div>
       )}
 
       {mutation.isError && (
         <p className="mt-4 text-center text-sm text-destructive">
-          Something went wrong while finding products. Please try again.
+          {mutation.error.message || "Could not search for products. Please try again."}
         </p>
       )}
     </div>
