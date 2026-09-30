@@ -1,4 +1,4 @@
-import { buildCompareBuyLink } from "@/lib/compare/merchants";
+import { buildMerchantAffiliateLink } from "@/lib/merchant";
 import type {
   BudgetDiscoveryResult,
   BudgetRecommendation,
@@ -8,7 +8,6 @@ type UnknownRecord = Record<string, unknown>;
 
 type GroundingChunk = {
   uri: string;
-  store: BudgetRecommendation["store"];
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -78,21 +77,20 @@ function normalizeMoney(value: string): number | null {
 }
 
 function hasPriceEvidence(price: number, evidence: string): boolean {
-  const escapedPrice = Math.round(price)
-    .toLocaleString("en-IN")
-    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const currencyAmount = new RegExp(
-    `(?:₹|\\bINR\\b|\\bRs\\.?\\s*)\\s*${escapedPrice}(?!\\d)`,
-    "i",
+  const amountPattern = "([\\d,]+(?:\\.\\d{1,2})?)";
+  const currencyAmounts = new RegExp(
+    `(?:₹|\\bINR\\b|\\bRs\\.?\\s*)\\s*${amountPattern}(?![\\d,])`,
+    "gi",
   );
-  const jsonPrice = new RegExp(
-    `["']?price["']?\\s*:\\s*["']?₹?\\s*${escapedPrice}(?!\\d)`,
-    "i",
+  const jsonAmounts = new RegExp(
+    `["']?price["']?\\s*:\\s*["']?₹?\\s*${amountPattern}(?![\\d,])`,
+    "gi",
   );
-  if (currencyAmount.test(evidence) || jsonPrice.test(evidence)) return true;
-
-  const amounts = evidence.matchAll(/(?:₹|\bINR\b|\bRs\.?\s*)\s*([\d,]+(?:\.\d{1,2})?)/gi);
-  for (const match of amounts) {
+  for (const match of `${evidence}\n${evidence.match(/.{0,30}price.{0,60}/i)?.[0] ?? ""}`.matchAll(currencyAmounts)) {
+    const found = normalizeMoney(match[1] ?? "");
+    if (found != null && Math.abs(found - price) < 0.01) return true;
+  }
+  for (const match of evidence.matchAll(jsonAmounts)) {
     const found = normalizeMoney(match[1] ?? "");
     if (found != null && Math.round(found) === Math.round(price)) return true;
   }
@@ -118,6 +116,7 @@ function matchesProductQuery(title: string, query: string): boolean {
     terms.some((term) => normalizedQuery.includes(term)),
   );
   if (category) {
+    if (category.includes("tv")) return /\b(?:tv|television)s?\b/i.test(title);
     return category.some((term) => {
       const termTokens = tokenize(term);
       return termTokens.length > 0 && termTokens.every((token) => normalizedTitle.includes(` ${token} `));
@@ -150,16 +149,14 @@ function parseModelProducts(text: string): unknown[] {
   }
 }
 
-function readGroundingChunks(metadata: UnknownRecord): GroundingChunk[] {
+function readGroundingChunks(metadata: UnknownRecord): Array<GroundingChunk | null> {
   const chunks = metadata.groundingChunks;
   if (!Array.isArray(chunks)) return [];
 
   return chunks.flatMap((rawChunk) => {
     const web = getRecord(getRecord(rawChunk)?.web);
     const uri = getString(web?.uri);
-    if (!uri) return [];
-    const verified = isHttpsProductUrl(uri);
-    return verified ? [{ uri, store: verified.store }] : [];
+    return [{ uri }];
   });
 }
 
@@ -176,7 +173,7 @@ function readGroundingEvidence(metadata: UnknownRecord, chunks: GroundingChunk[]
     if (!text || !Array.isArray(indices)) continue;
 
     for (const index of indices) {
-      if (typeof index !== "number" || !chunks[index]) continue;
+      if (typeof index !== "number" || !chunks[index]?.uri) continue;
       evidence.set(index, `${evidence.get(index) ?? ""} ${text}`);
     }
   }
@@ -231,6 +228,7 @@ export function validateGroundedProducts(
     const productUrl = isHttpsProductUrl(rawUrl);
     if (!productUrl) continue;
     const chunkIndex = chunks.findIndex((chunk) => {
+      if (!chunk) return false;
       const groundedUrl = isHttpsProductUrl(chunk.uri);
       return groundedUrl?.canonical === productUrl.canonical;
     });
@@ -248,7 +246,7 @@ export function validateGroundedProducts(
       price,
       store: productUrl.store,
       url: productUrl.url.toString(),
-      buyUrl: buildCompareBuyLink(
+      buyUrl: buildMerchantAffiliateLink(
         productUrl.store === "Amazon" ? "amazon" : "flipkart",
         productUrl.url.toString(),
       ),
