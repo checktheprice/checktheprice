@@ -16,10 +16,10 @@ export const Route = createFileRoute("/privacy")({
         content:
           "How CheckThePrice handles cookies, analytics, advertising, affiliate tracking, and user privacy.",
       },
-      { property: "og:url", content: "https://checktheprice.lovable.app/privacy" },
+      { property: "og:url", content: "https://checktheprice.vercel.app/privacy" },
     ],
     links: [
-      { rel: "canonical", href: "https://checktheprice.lovable.app/privacy" },
+      { rel: "canonical", href: "https://checktheprice.vercel.app/privacy" },
     ],
   }),
 });
