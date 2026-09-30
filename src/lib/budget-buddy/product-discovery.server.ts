@@ -1,8 +1,5 @@
 import { buildMerchantAffiliateLink } from "@/lib/merchant";
-import type {
-  BudgetDiscoveryResult,
-  BudgetRecommendation,
-} from "./types";
+import type { BudgetDiscoveryResult, BudgetRecommendation } from "./types";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -39,8 +36,7 @@ function isHttpsProductUrl(raw: string): {
     const path = url.pathname;
     const isAmazonProduct =
       amazon && /\/(?:dp|gp\/(?:product|aw\/d))\/[A-Z0-9]{10}(?:\/|$)/i.test(path);
-    const isFlipkartProduct =
-      flipkart && /\/p\/[a-z0-9]{8,}(?:\/|$)/i.test(path);
+    const isFlipkartProduct = flipkart && /\/p\/[a-z0-9]{8,}(?:\/|$)/i.test(path);
     if (!isAmazonProduct && !isFlipkartProduct) return null;
 
     url.hash = "";
@@ -112,13 +108,13 @@ function matchesProductQuery(title: string, query: string): boolean {
     ["earbud", "earbuds", "earphone", "earphones", "headphone", "headphones", "tws"],
     ["tv", "television"],
   ];
-  const category = categories.find((terms) =>
-    terms.some((term) => normalizedQuery.includes(term)),
-  );
+  const category = categories.find((terms) => terms.some((term) => normalizedQuery.includes(term)));
   if (category) {
     if (category.includes("tv")) return /\b(?:tv|television)s?\b/i.test(title);
     if (category.includes("smartphone")) {
-      return /\b(?:smart\s*phones?|mobile|phones?|iphone|pixel|galaxy|redmi|poco|realme|oneplus|motorola|oppo|vivo|nothing\s*phone)\b/i.test(title);
+      return /\b(?:smart\s*phones?|mobile|phones?|iphone|pixel|galaxy|redmi|poco|realme|oneplus|motorola|oppo|vivo|nothing\s*phone)\b/i.test(
+        title,
+      );
     }
     if (category.includes("earbud")) {
       return /\b(?:earbuds?|earphones?|headphones?|tws|airdopes|airpods|buds)\b/i.test(title);
@@ -126,7 +122,9 @@ function matchesProductQuery(title: string, query: string): boolean {
     return category.some((term) => {
       if (term === "laptop") return /\b(?:laptops?|notebooks?)\b/i.test(title);
       const termTokens = tokenize(term);
-      return termTokens.length > 0 && termTokens.every((token) => normalizedTitle.includes(` ${token} `));
+      return (
+        termTokens.length > 0 && termTokens.every((token) => normalizedTitle.includes(` ${token} `))
+      );
     });
   }
 
@@ -167,7 +165,10 @@ function readGroundingChunks(metadata: UnknownRecord): GroundingChunk[] {
   });
 }
 
-function readGroundingEvidence(metadata: UnknownRecord, chunks: GroundingChunk[]): Map<number, string> {
+function readGroundingEvidence(
+  metadata: UnknownRecord,
+  chunks: GroundingChunk[],
+): Map<number, string> {
   const supports = metadata.groundingSupports;
   const evidence = new Map<number, string>();
   if (!Array.isArray(supports)) return evidence;
@@ -206,9 +207,7 @@ export function validateGroundedProducts(
   const evidenceByChunk = readGroundingEvidence(metadata, chunks);
   const parts = getRecord(firstCandidate?.content)?.parts;
   if (!Array.isArray(parts)) return [];
-  const text = parts
-    .map((part) => getString(getRecord(part)?.text) ?? "")
-    .join("\n");
+  const text = parts.map((part) => getString(getRecord(part)?.text) ?? "").join("\n");
 
   const seen = new Set<string>();
   const verified: BudgetRecommendation[] = [];

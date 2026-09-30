@@ -19,8 +19,7 @@ export function BudgetBuddy() {
   const discover = useServerFn(discoverBudgetProductsFn);
 
   const mutation = useMutation<BudgetDiscoveryResult, Error, { query: string; budget: number }>({
-    mutationFn: ({ query, budget: amount }) =>
-      discover({ data: { query, budget: amount } }),
+    mutationFn: ({ query, budget: amount }) => discover({ data: { query, budget: amount } }),
   });
 
   const budgetValue = useMemo(() => parseBudget(budget), [budget]);
