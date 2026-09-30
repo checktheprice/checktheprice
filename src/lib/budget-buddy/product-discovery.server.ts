@@ -38,7 +38,7 @@ function isHttpsProductUrl(raw: string): {
 
     const path = url.pathname;
     const isAmazonProduct =
-      amazon && /\/(?:dp|gp\/product)\/[A-Z0-9]{10}(?:\/|$)/i.test(path);
+      amazon && /\/(?:dp|gp\/(?:product|aw\/d))\/[A-Z0-9]{10}(?:\/|$)/i.test(path);
     const isFlipkartProduct =
       flipkart && /\/p\/[a-z0-9]{8,}(?:\/|$)/i.test(path);
     if (!isAmazonProduct && !isFlipkartProduct) return null;
@@ -86,7 +86,7 @@ function hasPriceEvidence(price: number, evidence: string): boolean {
     `["']?price["']?\\s*:\\s*["']?₹?\\s*${amountPattern}(?![\\d,])`,
     "gi",
   );
-  for (const match of `${evidence}\n${evidence.match(/.{0,30}price.{0,60}/i)?.[0] ?? ""}`.matchAll(currencyAmounts)) {
+  for (const match of evidence.matchAll(currencyAmounts)) {
     const found = normalizeMoney(match[1] ?? "");
     if (found != null && Math.abs(found - price) < 0.01) return true;
   }
@@ -118,12 +118,13 @@ function matchesProductQuery(title: string, query: string): boolean {
   if (category) {
     if (category.includes("tv")) return /\b(?:tv|television)s?\b/i.test(title);
     if (category.includes("smartphone")) {
-      return /\b(?:smart\s*phone|mobile|phone|iphone|pixel|galaxy|redmi|poco|realme|oneplus|motorola|oppo|vivo|nothing\s*phone)\b/i.test(title);
+      return /\b(?:smart\s*phones?|mobile|phones?|iphone|pixel|galaxy|redmi|poco|realme|oneplus|motorola|oppo|vivo|nothing\s*phone)\b/i.test(title);
     }
     if (category.includes("earbud")) {
       return /\b(?:earbuds?|earphones?|headphones?|tws|airdopes|airpods|buds)\b/i.test(title);
     }
     return category.some((term) => {
+      if (term === "laptop") return /\b(?:laptops?|notebooks?)\b/i.test(title);
       const termTokens = tokenize(term);
       return termTokens.length > 0 && termTokens.every((token) => normalizedTitle.includes(` ${token} `));
     });
@@ -155,14 +156,14 @@ function parseModelProducts(text: string): unknown[] {
   }
 }
 
-function readGroundingChunks(metadata: UnknownRecord): Array<GroundingChunk | null> {
+function readGroundingChunks(metadata: UnknownRecord): GroundingChunk[] {
   const chunks = metadata.groundingChunks;
   if (!Array.isArray(chunks)) return [];
 
   return chunks.flatMap((rawChunk) => {
     const web = getRecord(getRecord(rawChunk)?.web);
     const uri = getString(web?.uri);
-    return [{ uri }];
+    return [{ uri: uri ?? "" }];
   });
 }
 
