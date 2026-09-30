@@ -278,45 +278,115 @@ export async function discoverBudgetProducts(args: {
 
   const prompt = `Find current, purchasable products in India for this request: ${JSON.stringify(query)}. The maximum budget is ₹${Math.floor(args.budget).toLocaleString("en-IN")} per product. Use Google Search now. Prioritize direct product-detail pages on Amazon.in and Flipkart.com. Return only the actual requested product type, never accessories, bundles of accessories, cases, covers, chargers, or unrelated items. Include only products whose current Indian rupee price and exact direct merchant product URL are supported by the search results. Never infer or invent a product, price, URL, rating, review count, ASIN, stock status, or specification. Return a JSON object only in this shape: {"products":[{"title":"exact listed product title","price":12345,"url":"https://www.amazon.in/dp/XXXXXXXXXX"}]}. The price must be a numeric INR amount. Return up to 10 distinct candidates, ordered by suitability. If evidence is missing, omit the candidate; if no candidates are verified, return {"products":[]}.`;
 
-  let response: Response;
-  try {
-    response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
-      {
+  const model = process.env.GEMINI_MODEL?.trim() || "gemini-3.8-flash";
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const requestBody = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    tools: [{ google_search: {} }],
+  });
+
+  let payload: unknown = null;
+  let lastFailure:
+    | { status: number; message: string; retryable: boolean; dailyLimit: boolean; retryDelayMs?: number }
+    | null = null;
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "content-type": "application/json",
           "x-goog-api-key": args.apiKey,
         },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          tools: [{ google_search: {} }],
-        }),
-      },
-    );
-  } catch {
-    return emptyResult("Could not reach product search right now. Please try again shortly.");
+        body: requestBody,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[budget-buddy] Gemini request failed", {
+        attempt,
+        status: null,
+        error: message,
+        model,
+        endpoint,
+        groundingRequested: true,
+        keyConfigured: Boolean(args.apiKey),
+      });
+      if (attempt === 1) continue;
+      return emptyResult("Could not reach product search right now. Please try again shortly.");
+    }
+
+    const rawErrorBody = response.ok ? "" : await response.text();
+    if (response.ok) {
+      try {
+        payload = await response.json();
+      } catch {
+        return emptyResult("Product search returned an unreadable response. Please try again.");
+      }
+      lastFailure = null;
+      break;
+    }
+
+    let errorMessage = rawErrorBody;
+    try {
+      const parsed = JSON.parse(rawErrorBody) as UnknownRecord;
+      const error = getRecord(parsed.error);
+      errorMessage = getString(error?.message) ?? rawErrorBody;
+    } catch {
+      // Keep the raw text when Gemini did not return JSON.
+    }
+    const cleanedMessage = errorMessage.replaceAll(args.apiKey, "[REDACTED]");
+    const lowerMessage = cleanedMessage.toLowerCase();
+    const dailyLimit =
+      response.status === 429 &&
+      /per day|per-day|daily|quota exceeded|quota.*day|daily.*quota/.test(lowerMessage);
+    const retryable =
+      response.status === 429 || response.status === 500 || response.status === 502 ||
+      response.status === 503 || response.status === 504;
+    const retryDelayMatch = cleanedMessage.match(/retry(?: in|after)?[^\d]*(\d+(?:\.\d+)?)\s*s/i);
+    const retryDelayMs = retryDelayMatch ? Math.min(60_000, Math.max(500, Number(retryDelayMatch[1]) * 1000)) : 1500;
+
+    lastFailure = {
+      status: response.status,
+      message: cleanedMessage,
+      retryable,
+      dailyLimit,
+      retryDelayMs,
+    };
+
+    console.error("[budget-buddy] Gemini request failed", {
+      attempt,
+      status: response.status,
+      error: cleanedMessage,
+      model,
+      endpoint,
+      groundingRequested: true,
+      keyConfigured: Boolean(args.apiKey),
+      retryDelayMs,
+      retrying: attempt === 1 && retryable && !dailyLimit,
+    });
+
+    if (attempt === 1 && retryable && !dailyLimit) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      continue;
+    }
+    break;
   }
 
-  if (!response.ok) {
-    console.error("[budget-buddy] Gemini request failed", response.status);
-    if (response.status === 401 || response.status === 403) {
+  if (lastFailure) {
+    if (lastFailure.status === 401 || lastFailure.status === 403) {
       return emptyResult("Gemini search access is unavailable for this deployment.");
     }
-    if (response.status === 429) {
-      return emptyResult("Gemini search is busy right now. Please try again later.");
+    if (lastFailure.dailyLimit) {
+      return emptyResult("Today's product search limit has been reached. Please try again tomorrow.");
     }
-    if (response.status >= 500) {
+    if (lastFailure.status === 429) {
+      return emptyResult("Too many product searches right now. Please wait a minute and try again.");
+    }
+    if (lastFailure.status >= 500) {
       return emptyResult("Product search is temporarily unavailable. Please try again later.");
     }
     return emptyResult("Product search could not process this request.");
-  }
-
-  let payload: unknown;
-  try {
-    payload = await response.json();
-  } catch {
-    return emptyResult("Product search returned an unreadable response. Please try again.");
   }
 
   const products = validateGroundedProducts(payload, query, args.budget);
