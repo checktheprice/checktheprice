@@ -92,7 +92,7 @@ function hasPriceEvidence(price: number, evidence: string): boolean {
   }
   for (const match of evidence.matchAll(jsonAmounts)) {
     const found = normalizeMoney(match[1] ?? "");
-    if (found != null && Math.round(found) === Math.round(price)) return true;
+    if (found != null && Math.abs(found - price) < 0.01) return true;
   }
   return false;
 }
@@ -117,6 +117,12 @@ function matchesProductQuery(title: string, query: string): boolean {
   );
   if (category) {
     if (category.includes("tv")) return /\b(?:tv|television)s?\b/i.test(title);
+    if (category.includes("smartphone")) {
+      return /\b(?:smart\s*phone|mobile|phone|iphone|pixel|galaxy|redmi|poco|realme|oneplus|motorola|oppo|vivo|nothing\s*phone)\b/i.test(title);
+    }
+    if (category.includes("earbud")) {
+      return /\b(?:earbuds?|earphones?|headphones?|tws|airdopes|airpods|buds)\b/i.test(title);
+    }
     return category.some((term) => {
       const termTokens = tokenize(term);
       return termTokens.length > 0 && termTokens.every((token) => normalizedTitle.includes(` ${token} `));
@@ -314,9 +320,9 @@ export async function discoverBudgetProducts(args: {
   }
 
   const products = validateGroundedProducts(payload, query, args.budget);
-  if (products.length === 0) {
+  if (products.length < 3) {
     return emptyResult(
-      "No verified Amazon.in or Flipkart product pages with a matching price were found within your budget. Try a more specific search.",
+      "Fewer than three products could be verified with matching prices on Amazon.in or Flipkart within your budget. Try a more specific search.",
     );
   }
 
