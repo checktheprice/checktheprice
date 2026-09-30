@@ -1,14 +1,10 @@
-import { buildCompareBuyLink } from "@/lib/compare/merchants";
-import type {
-  BudgetDiscoveryResult,
-  BudgetRecommendation,
-} from "./types";
+import { buildMerchantAffiliateLink } from "@/lib/merchant";
+import type { BudgetDiscoveryResult, BudgetRecommendation } from "./types";
 
 type UnknownRecord = Record<string, unknown>;
 
 type GroundingChunk = {
   uri: string;
-  store: BudgetRecommendation["store"];
 };
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -39,9 +35,8 @@ function isHttpsProductUrl(raw: string): {
 
     const path = url.pathname;
     const isAmazonProduct =
-      amazon && /\/(?:dp|gp\/product)\/[A-Z0-9]{10}(?:\/|$)/i.test(path);
-    const isFlipkartProduct =
-      flipkart && /\/p\/[a-z0-9]{8,}(?:\/|$)/i.test(path);
+      amazon && /\/(?:dp|gp\/(?:product|aw\/d))\/[A-Z0-9]{10}(?:\/|$)/i.test(path);
+    const isFlipkartProduct = flipkart && /\/p\/[a-z0-9]{8,}(?:\/|$)/i.test(path);
     if (!isAmazonProduct && !isFlipkartProduct) return null;
 
     url.hash = "";
@@ -78,23 +73,22 @@ function normalizeMoney(value: string): number | null {
 }
 
 function hasPriceEvidence(price: number, evidence: string): boolean {
-  const escapedPrice = Math.round(price)
-    .toLocaleString("en-IN")
-    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const currencyAmount = new RegExp(
-    `(?:₹|\\bINR\\b|\\bRs\\.?\\s*)\\s*${escapedPrice}(?!\\d)`,
-    "i",
+  const amountPattern = "([\\d,]+(?:\\.\\d{1,2})?)";
+  const currencyAmounts = new RegExp(
+    `(?:₹|\\bINR\\b|\\bRs\\.?\\s*)\\s*${amountPattern}(?![\\d,])`,
+    "gi",
   );
-  const jsonPrice = new RegExp(
-    `["']?price["']?\\s*:\\s*["']?₹?\\s*${escapedPrice}(?!\\d)`,
-    "i",
+  const jsonAmounts = new RegExp(
+    `["']?price["']?\\s*:\\s*["']?₹?\\s*${amountPattern}(?![\\d,])`,
+    "gi",
   );
-  if (currencyAmount.test(evidence) || jsonPrice.test(evidence)) return true;
-
-  const amounts = evidence.matchAll(/(?:₹|\bINR\b|\bRs\.?\s*)\s*([\d,]+(?:\.\d{1,2})?)/gi);
-  for (const match of amounts) {
+  for (const match of evidence.matchAll(currencyAmounts)) {
     const found = normalizeMoney(match[1] ?? "");
-    if (found != null && Math.round(found) === Math.round(price)) return true;
+    if (found != null && Math.abs(found - price) < 0.01) return true;
+  }
+  for (const match of evidence.matchAll(jsonAmounts)) {
+    const found = normalizeMoney(match[1] ?? "");
+    if (found != null && Math.abs(found - price) < 0.01) return true;
   }
   return false;
 }
@@ -114,13 +108,23 @@ function matchesProductQuery(title: string, query: string): boolean {
     ["earbud", "earbuds", "earphone", "earphones", "headphone", "headphones", "tws"],
     ["tv", "television"],
   ];
-  const category = categories.find((terms) =>
-    terms.some((term) => normalizedQuery.includes(term)),
-  );
+  const category = categories.find((terms) => terms.some((term) => normalizedQuery.includes(term)));
   if (category) {
+    if (category.includes("tv")) return /\b(?:tv|television)s?\b/i.test(title);
+    if (category.includes("smartphone")) {
+      return /\b(?:smart\s*phones?|mobile|phones?|iphone|pixel|galaxy|redmi|poco|realme|oneplus|motorola|oppo|vivo|nothing\s*phone)\b/i.test(
+        title,
+      );
+    }
+    if (category.includes("earbud")) {
+      return /\b(?:earbuds?|earphones?|headphones?|tws|airdopes|airpods|buds)\b/i.test(title);
+    }
     return category.some((term) => {
+      if (term === "laptop") return /\b(?:laptops?|notebooks?)\b/i.test(title);
       const termTokens = tokenize(term);
-      return termTokens.length > 0 && termTokens.every((token) => normalizedTitle.includes(` ${token} `));
+      return (
+        termTokens.length > 0 && termTokens.every((token) => normalizedTitle.includes(` ${token} `))
+      );
     });
   }
 
@@ -157,13 +161,14 @@ function readGroundingChunks(metadata: UnknownRecord): GroundingChunk[] {
   return chunks.flatMap((rawChunk) => {
     const web = getRecord(getRecord(rawChunk)?.web);
     const uri = getString(web?.uri);
-    if (!uri) return [];
-    const verified = isHttpsProductUrl(uri);
-    return verified ? [{ uri, store: verified.store }] : [];
+    return [{ uri: uri ?? "" }];
   });
 }
 
-function readGroundingEvidence(metadata: UnknownRecord, chunks: GroundingChunk[]): Map<number, string> {
+function readGroundingEvidence(
+  metadata: UnknownRecord,
+  chunks: GroundingChunk[],
+): Map<number, string> {
   const supports = metadata.groundingSupports;
   const evidence = new Map<number, string>();
   if (!Array.isArray(supports)) return evidence;
@@ -176,7 +181,7 @@ function readGroundingEvidence(metadata: UnknownRecord, chunks: GroundingChunk[]
     if (!text || !Array.isArray(indices)) continue;
 
     for (const index of indices) {
-      if (typeof index !== "number" || !chunks[index]) continue;
+      if (typeof index !== "number" || !chunks[index]?.uri) continue;
       evidence.set(index, `${evidence.get(index) ?? ""} ${text}`);
     }
   }
@@ -202,9 +207,7 @@ export function validateGroundedProducts(
   const evidenceByChunk = readGroundingEvidence(metadata, chunks);
   const parts = getRecord(firstCandidate?.content)?.parts;
   if (!Array.isArray(parts)) return [];
-  const text = parts
-    .map((part) => getString(getRecord(part)?.text) ?? "")
-    .join("\n");
+  const text = parts.map((part) => getString(getRecord(part)?.text) ?? "").join("\n");
 
   const seen = new Set<string>();
   const verified: BudgetRecommendation[] = [];
@@ -231,6 +234,7 @@ export function validateGroundedProducts(
     const productUrl = isHttpsProductUrl(rawUrl);
     if (!productUrl) continue;
     const chunkIndex = chunks.findIndex((chunk) => {
+      if (!chunk) return false;
       const groundedUrl = isHttpsProductUrl(chunk.uri);
       return groundedUrl?.canonical === productUrl.canonical;
     });
@@ -248,7 +252,7 @@ export function validateGroundedProducts(
       price,
       store: productUrl.store,
       url: productUrl.url.toString(),
-      buyUrl: buildCompareBuyLink(
+      buyUrl: buildMerchantAffiliateLink(
         productUrl.store === "Amazon" ? "amazon" : "flipkart",
         productUrl.url.toString(),
       ),
@@ -316,9 +320,9 @@ export async function discoverBudgetProducts(args: {
   }
 
   const products = validateGroundedProducts(payload, query, args.budget);
-  if (products.length === 0) {
+  if (products.length < 3) {
     return emptyResult(
-      "No verified Amazon.in or Flipkart product pages with a matching price were found within your budget. Try a more specific search.",
+      "Fewer than three products could be verified with matching prices on Amazon.in or Flipkart within your budget. Try a more specific search.",
     );
   }
 
