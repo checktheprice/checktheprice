@@ -16,10 +16,10 @@ export const Route = createFileRoute("/affiliate-disclosure")({
         content:
           "We participate in affiliate programs including Amazon Associates and may earn commissions from qualifying purchases.",
       },
-      { property: "og:url", content: "https://checktheprice.lovable.app/affiliate-disclosure" },
+      { property: "og:url", content: "https://checktheprice.vercel.app/affiliate-disclosure" },
     ],
     links: [
-      { rel: "canonical", href: "https://checktheprice.lovable.app/affiliate-disclosure" },
+      { rel: "canonical", href: "https://checktheprice.vercel.app/affiliate-disclosure" },
     ],
   }),
 });
